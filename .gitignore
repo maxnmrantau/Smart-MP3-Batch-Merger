@@ -1,0 +1,30 @@
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.spec
+
+# PyInstaller & Build outputs (>100MB binaries)
+build/
+dist/
+bin/
+*.exe
+
+# User Workspace & Output Tracks
+workspace_inputs/
+output_merged_tracks/
+*.mp3
+*.wav
+*.m4a
+*.aac
+*.flac
+*.ogg
+
+# Environment & OS files
+.env
+.venv
+env/
+venv/
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+  <title>Smart MP3 Batch Merger & Randomizer</title>
+  <link rel="icon" type="image/png" href="icon.png">
+  <link rel="shortcut icon" href="favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body oncontextmenu="return false;">
+  <div class="app-container">
+    <!-- Header (Clean & Minimalist) -->
+    <header class="app-header">
+      <div class="brand-group">
+        <div class="logo-icon">
+          <img src="icon.png" alt="Logo" width="34" height="34" style="border-radius: 8px;">
+        </div>
+        <div>
+          <h1 class="app-title">Smart MP3 Batch Merger</h1>
+          <p class="app-subtitle">Audio Combinatorics & Intelligent Randomizer Engine</p>
+        </div>
+      </div>
+    </header>
+
+    <div class="main-layout">
+      <!-- Left / Top Column: 3-Folder Setup & Settings -->
+      <div class="config-column">
+        <!-- 1. Folder Management Card -->
+        <section class="card glass-card">
+          <div class="card-header">
+            <div class="step-num">1</div>
+            <div>
+              <h2>Input Lagu Wajib & Lagu Random</h2>
+              <p class="card-desc">Pilih folder, upload file MP3, atau ketik path folder di bawah.</p>
+            </div>
+          </div>
+
+          <div class="folder-group">
+            <!-- Folder Lagu Wajib -->
+            <div class="folder-item drop-zone" id="mandatoryDropZone">
+              <div class="folder-label-row">
+                <label>
+                  <span class="folder-tag tag-mandatory">🎵 1. Lagu Wajib (Mandatory)</span>
+                </label>
+                <span class="badge" id="mandatoryCountBadge">0 Lagu Terdeteksi</span>
+              </div>
+
+              <!-- Action Buttons for Picking Folder or Multiple MP3 Files -->
+              <div class="pick-actions-row">
+                <input type="file" id="mandatoryFolderPicker" webkitdirectory directory style="display:none" />
+                <input type="file" id="mandatoryFilesPicker" multiple accept="audio/*,.mp3,.wav,.aac,.m4a,.flac,.ogg" style="display:none" />
+
+                <button type="button" class="btn btn-secondary btn-action-pick" id="btnPickMandatoryFolder">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                  <span>Pilih Folder Wajib</span>
+                </button>
+                <button type="button" class="btn btn-secondary btn-action-pick" id="btnPickMandatoryFiles">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                  <span>Pilih File Lagu</span>
+                </button>
+              </div>
+
+              <!-- Direct Path Input -->
+              <div class="input-with-button">
+                <input type="text" id="mandatoryFolderInput" placeholder="Atau ketik/paste path folder (cth: D:\Music\LaguWajib)" />
+                <button type="button" class="btn btn-secondary btn-sm" id="btnScanMandatoryPath" title="Scan Folder Path">
+                  Scan
+                </button>
+              </div>
+
+              <div class="track-tags-container" id="mandatoryTrackChips"></div>
+            </div>
+
+            <!-- Folder Lagu Random -->
+            <div class="folder-item drop-zone" id="randomDropZone">
+              <div class="folder-label-row">
+                <label>
+                  <span class="folder-tag tag-random">🎲 2. Pool Lagu Random (Acak)</span>
+                </label>
+                <span class="badge" id="randomCountBadge">0 Lagu Terdeteksi</span>
+              </div>
+
+              <!-- Action Buttons for Picking Folder or Multiple MP3 Files -->
+              <div class="pick-actions-row">
+                <input type="file" id="randomFolderPicker" webkitdirectory directory style="display:none" />
+                <input type="file" id="randomFilesPicker" multiple accept="audio/*,.mp3,.wav,.aac,.m4a,.flac,.ogg" style="display:none" />
+
+                <button type="button" class="btn btn-secondary btn-action-pick" id="btnPickRandomFolder">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                  <span>Pilih Folder Pool</span>
+                </button>
+                <button type="button" class="btn btn-secondary btn-action-pick" id="btnPickRandomFiles">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                  <span>Pilih File Lagu</span>
+                </button>
+              </div>
+
+              <!-- Direct Path Input -->
+              <div class="input-with-button">
+                <input type="text" id="randomFolderInput" placeholder="Atau ketik/paste path folder (cth: D:\Music\RandomPool)" />
+                <button type="button" class="btn btn-secondary btn-sm" id="btnScanRandomPath" title="Scan Folder Path">
+                  Scan
+                </button>
+              </div>
+
+              <div class="track-tags-container" id="randomTrackChips"></div>
+            </div>
+
+            <!-- Folder Output -->
+            <div class="folder-item">
+              <div class="folder-label-row">
+                <label for="outputFolderInput">
+                  <span class="folder-tag tag-output">💾 3. Folder Tujuan Output</span>
+                </label>
+              </div>
+
+              <!-- Action buttons for output folder -->
+              <div class="pick-actions-row">
+                <input type="file" id="outputFolderPicker" webkitdirectory directory style="display:none" />
+                <button type="button" class="btn btn-secondary btn-action-pick" id="btnPickOutputFolder">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                  <span>Pilih Folder Output</span>
+                </button>
+                <button type="button" class="btn btn-secondary btn-action-pick" id="btnOpenOutputFolderDirect">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                  <span>Buka di Explorer</span>
+                </button>
+              </div>
+
+              <div class="input-with-button">
+                <input type="text" id="outputFolderInput" placeholder="Folder output (otomatis dibuat di folder project jika kosong)" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. Merging & Arrangement Settings -->
+        <section class="card glass-card">
+          <div class="card-header">
+            <div class="step-num">2</div>
+            <div>
+              <h2>Pengaturan Penggabungan & Posisi</h2>
+              <p class="card-desc">Atur posisi lagu wajib, jumlah lagu per gabungan, dan ukuran batch.</p>
+            </div>
+          </div>
+
+          <div class="settings-grid">
+            <!-- Posisi Lagu Wajib -->
+            <div class="setting-block">
+              <label class="setting-title">Posisi Lagu Wajib</label>
+              <div class="pill-selector" id="positionSelector">
+                <label class="pill-option">
+                  <input type="radio" name="positionMode" value="start">
+                  <span class="pill-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+                    Di Awal (Intro)
+                  </span>
+                </label>
+                <label class="pill-option">
+                  <input type="radio" name="positionMode" value="end">
+                  <span class="pill-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
+                    Di Akhir (Outro)
+                  </span>
+                </label>
+                <label class="pill-option">
+                  <input type="radio" name="positionMode" value="random" checked>
+                  <span class="pill-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>
+                    Posisi Acak
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Mode Jika Banyak Lagu Wajib -->
+            <div class="setting-block" id="mandatoryModeBlock">
+              <label class="setting-title">Mode Lagu Wajib (Jika >1 File)</label>
+              <div class="pill-selector" id="mandatoryModeSelector">
+                <label class="pill-option">
+                  <input type="radio" name="mandatoryMode" value="all" checked>
+                  <span class="pill-btn">Semua Wajib Masuk</span>
+                </label>
+                <label class="pill-option">
+                  <input type="radio" name="mandatoryMode" value="one">
+                  <span class="pill-btn">Ambil 1 Bergilir</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Sliders: Songs Per Mix & Batch Count -->
+            <div class="setting-block slider-block">
+              <div class="slider-header">
+                <label for="songsPerOutputRange">Jumlah Lagu per Output File</label>
+                <span class="slider-value-badge" id="songsPerOutputVal">5 Lagu</span>
+              </div>
+              <input type="range" id="songsPerOutputRange" min="2" max="20" value="5" step="1" />
+              <div class="slider-hint" id="songsCompositionHint">Panjang 1 File MP3 = 1 Lagu Wajib + 4 Lagu Random (Durasi ~15-20 Menit)</div>
+            </div>
+
+            <div class="setting-block slider-block">
+              <div class="slider-header">
+                <label for="batchCountRange">Target Jumlah File Output (Batch)</label>
+                <span class="slider-value-badge" id="batchCountVal">5 File</span>
+              </div>
+              <input type="range" id="batchCountRange" min="1" max="100" value="5" step="1" />
+              <div class="slider-hint" id="batchHint">Total File MP3 yang Dibuat = 5 Buah File MP3 Berbeda</div>
+            </div>
+
+            <!-- Advanced Audio Options -->
+            <div class="setting-block">
+              <div class="slider-header">
+                <label for="crossfadeRange">Efek Transisi (Crossfade)</label>
+                <span class="slider-value-badge" id="crossfadeVal">0.0 Detik</span>
+              </div>
+              <input type="range" id="crossfadeRange" min="0" max="5" value="0" step="0.5" />
+              <div class="slider-hint">0 = Sambung langsung (Cepat), 1 - 5 detik = Transisi halus antar lagu.</div>
+            </div>
+
+            <div class="setting-block">
+              <label class="setting-title">Kualitas Audio (Bitrate Output)</label>
+              <select id="audioQualitySelect" class="custom-select">
+                <option value="auto" selected>Auto - Match Source Quality (Disarankan)</option>
+                <option value="320">320 kbps (Ultra High Quality)</option>
+                <option value="256">256 kbps (High Quality)</option>
+                <option value="192">192 kbps (Standard Quality)</option>
+              </select>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Right Column: Live Inspector & Action Panel -->
+      <div class="action-column">
+        <!-- Live Combinatorics & Audio Inspector Card -->
+        <section class="card glass-card highlight-card">
+          <div class="inspector-badge">🧮 Live Combinatorics Inspector</div>
+          <div class="inspector-metric-box">
+            <span class="metric-label">Kemungkinan Maksimal File Unik:</span>
+            <div class="metric-value-wrapper">
+              <span class="metric-value" id="totalVariationsDisplay">--</span>
+              <span class="metric-unit">Variasi</span>
+            </div>
+            <div class="metric-formula" id="formulaDescDisplay">Silakan masukkan folder / file lagu untuk menghitung variasi</div>
+          </div>
+
+          <div class="inspector-details-grid">
+            <div class="inspector-mini-stat">
+              <span class="mini-label">Pool Lagu Acak</span>
+              <strong class="mini-val" id="inspectorRandomCount">0 Lagu</strong>
+            </div>
+            <div class="inspector-mini-stat">
+              <span class="mini-label">Lagu Wajib</span>
+              <strong class="mini-val" id="inspectorMandatoryCount">0 Lagu</strong>
+            </div>
+            <div class="inspector-mini-stat">
+              <span class="mini-label">Kualitas Terdeteksi</span>
+              <strong class="mini-val text-cyan" id="inspectorBitrate">Auto (320k)</strong>
+            </div>
+            <div class="inspector-mini-stat">
+              <span class="mini-label">Proteksi Duplikasi</span>
+              <strong class="mini-val text-green">100% Unique Guaranteed</strong>
+            </div>
+          </div>
+        </section>
+
+        <!-- Start Merge Card -->
+        <section class="card glass-card action-card-container">
+          <button type="button" class="btn btn-primary btn-large" id="startMergeBtn">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            <span>Mulai Proses Merge (Batch)</span>
+          </button>
+
+          <!-- Progress Section -->
+          <div class="progress-container hidden" id="progressContainer">
+            <div class="progress-header-row">
+              <span class="progress-title" id="progressStatusText">Memproses file...</span>
+              <span class="progress-percent" id="progressPercentText">0%</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" id="progressBarFill" style="width: 0%"></div>
+            </div>
+            <div class="current-track-pipeline" id="currentTrackPipeline">
+              <!-- Live song sequence badges will appear here -->
+            </div>
+          </div>
+
+          <!-- Log Console (Fixed Solid Container) -->
+          <div class="log-console-box" id="logConsole">
+            <div class="log-entry">Siap memulai penggabungan audio.</div>
+          </div>
+        </section>
+
+        <!-- Completed Results Section -->
+        <section class="card glass-card results-card">
+          <div class="results-header-row">
+            <div>
+              <h3>Daftar File Hasil</h3>
+              <p class="card-desc">File MP3 yang berhasil digabungkan</p>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" id="openOutputFolderBtn">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+              Buka Folder Hasil
+            </button>
+          </div>
+
+          <!-- Audio Player Bar -->
+          <div class="audio-player-wrapper" id="audioPlayerWrapper">
+            <div class="now-playing-info">
+              <span class="now-playing-label">Preview Audio:</span>
+              <strong class="now-playing-title" id="playerTrackTitle">Pilih file hasil untuk diputar</strong>
+            </div>
+            <audio id="mainAudioPlayer" controls></audio>
+          </div>
+
+          <div class="results-list" id="resultsList">
+            <div class="empty-results-placeholder">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              <span>Belum ada file yang di-generate. Klik tombol "Mulai Proses Merge" di atas.</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
