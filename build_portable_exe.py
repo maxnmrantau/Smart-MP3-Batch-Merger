@@ -1,6 +1,6 @@
 """
 build_portable_exe.py
-Automated build script using PyInstaller to produce a single-file NO-CONSOLE portable Smart_MP3_Merger.exe with custom icon.
+Automated build script using PyInstaller to produce a single-file NO-CONSOLE portable Smart_MP3_Merger.exe with custom icon and native WebView2 support.
 """
 
 import os
@@ -12,7 +12,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def build_exe():
     print("=" * 60)
-    print("MEMULAI PROSES BUILD PORTABLE EXE (NO-CONSOLE + CUSTOM ICON)")
+    print("MEMULAI PROSES BUILD PORTABLE EXE (NATIVE WEBVIEW2 + CUSTOM ICON)")
     print("=" * 60)
     
     bin_dir = os.path.join(BASE_DIR, "bin")
@@ -43,6 +43,9 @@ def build_exe():
         "--add-data", static_data,
         "--add-data", ffmpeg_data,
         "--add-data", ffprobe_data,
+        "--collect-all", "webview",
+        "--collect-all", "pythonnet",
+        "--collect-all", "clr_loader",
         "--hidden-import", "tkinter",
         "--hidden-import", "tkinter.filedialog",
         "--hidden-import", "merger_engine",
@@ -61,7 +64,7 @@ def build_exe():
             shutil.copy(dist_exe, target_root_exe)
             file_size_mb = os.path.getsize(target_root_exe) / (1024 * 1024)
             print("\n" + "=" * 60)
-            print(f"[SUKSES] File EXE Portable (No-Console + Custom Icon) Berhasil Dibuat!")
+            print(f"[SUKSES] File EXE Portable (Native WebView2) Berhasil Dibuat!")
             print(f"Lokasi: {target_root_exe}")
             print(f"Ukuran: {file_size_mb:.1f} MB")
             print("=" * 60)

@@ -46,10 +46,6 @@ WORKSPACE_MANDATORY_DIR = os.path.join(WORKSPACE_INPUTS_DIR, "mandatory")
 WORKSPACE_RANDOM_DIR = os.path.join(WORKSPACE_INPUTS_DIR, "random")
 WORKSPACE_OUTPUT_DIR = os.path.join(BASE_DIR, "output_merged_tracks")
 
-os.makedirs(WORKSPACE_MANDATORY_DIR, exist_ok=True)
-os.makedirs(WORKSPACE_RANDOM_DIR, exist_ok=True)
-os.makedirs(WORKSPACE_OUTPUT_DIR, exist_ok=True)
-
 # Global state for merge background task
 merge_task_state = {
     "is_running": False,
@@ -408,22 +404,27 @@ class AppRequestHandler(SimpleHTTPRequestHandler):
         self.send_error(404, "Endpoint not found")
 
 
-def start_server_in_thread():
+HOST = "127.0.0.1"
+PORT = 8765
+
+
+def start_server_in_thread(host: str = HOST, port: int = PORT):
     """Starts the HTTP server inside a background thread (for single-exe operation)."""
-    server_address = ("", PORT)
+    os.makedirs(STATIC_DIR, exist_ok=True)
+    server_address = (host, port)
     httpd = ThreadingHTTPServer(server_address, AppRequestHandler)
     t = threading.Thread(target=httpd.serve_forever, daemon=True)
     t.start()
     return httpd
 
 
-def start_server():
+def start_server(host: str = HOST, port: int = PORT):
     os.makedirs(STATIC_DIR, exist_ok=True)
-    server_address = ("", PORT)
+    server_address = (host, port)
     httpd = ThreadingHTTPServer(server_address, AppRequestHandler)
     print("=" * 60)
     print("SMART MP3 BATCH MERGER SERVER BERJALAN")
-    print(f"Buka URL di Browser: http://localhost:{PORT}")
+    print(f"Buka URL di Browser: http://{host}:{port}")
     print("=" * 60)
     try:
         httpd.serve_forever()

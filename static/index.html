@@ -20,9 +20,19 @@
           <img src="icon.png" alt="Logo" width="34" height="34" style="border-radius: 8px;">
         </div>
         <div>
-          <h1 class="app-title">Smart MP3 Batch Merger</h1>
+          <div class="title-with-badge">
+            <h1 class="app-title">Smart MP3 Batch Merger</h1>
+            <span class="app-version-badge">v2.0.0</span>
+          </div>
           <p class="app-subtitle">Audio Combinatorics & Intelligent Randomizer Engine</p>
         </div>
+      </div>
+
+      <div class="header-actions">
+        <button type="button" class="btn btn-guide" id="btnOpenGuide" title="Buka Panduan Penggunaan Aplikasi">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          <span>Panduan</span>
+        </button>
       </div>
     </header>
 
@@ -324,6 +334,176 @@
             </div>
           </div>
         </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Panduan Interaktif -->
+  <div class="modal-overlay hidden" id="guideModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon-badge">📖</div>
+          <div>
+            <h2 class="modal-title">Panduan Penggunaan Smart MP3 Batch Merger</h2>
+            <p class="modal-subtitle">Panduan lengkap pengoperasian, pengaturan folder manual, dan fitur cerdas aplikasi</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" id="btnCloseGuide" title="Tutup Panduan (ESC)">&times;</button>
+      </div>
+
+      <div class="modal-tabs">
+        <button type="button" class="tab-btn active" data-tab="tab-workflow">🚀 4 Langkah Penggunaan</button>
+        <button type="button" class="tab-btn" data-tab="tab-folders">📁 Panduan Folder Manual</button>
+        <button type="button" class="tab-btn" data-tab="tab-modes">⚙️ Mode & Aturan Lagu</button>
+        <button type="button" class="tab-btn" data-tab="tab-tips">💡 Tips & Kualitas Audio</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Tab 1: Workflow -->
+        <div class="tab-pane active" id="tab-workflow">
+          <div class="guide-steps-list">
+            <div class="guide-step-card">
+              <div class="step-badge">Langkah 1</div>
+              <div class="step-content">
+                <h4>Input Lagu Wajib & Lagu Random</h4>
+                <p>Klik tombol <strong>"Pilih Folder Wajib"</strong> untuk memilih folder berisi lagu utama (contoh: Lagu Pembuka/Intro/Identitas). Kemudian klik <strong>"Pilih Folder Pool"</strong> untuk folder kumpulan lagu yang akan diacak secara cerdas.</p>
+                <div class="guide-tip-box">
+                  <span class="tip-icon">✨</span>
+                  <span>Anda juga bisa mengklik <em>"Pilih File Lagu"</em> atau menarik (<em>Drag & Drop</em>) file MP3 langsung ke kotak input.</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="guide-step-card">
+              <div class="step-badge">Langkah 2</div>
+              <div class="step-content">
+                <h4>Tentukan Mode & Posisi Lagu Wajib</h4>
+                <p>Pilih di mana posisi Lagu Wajib akan ditempatkan di setiap file output:</p>
+                <ul>
+                  <li><strong>Di Awal (Intro):</strong> Lagu wajib selalu menjadi lagu pembuka (#1) di setiap file MP3.</li>
+                  <li><strong>Di Akhir (Outro):</strong> Lagu wajib selalu ditaruh di slot lagu paling terakhir.</li>
+                  <li><strong>Posisi Acak:</strong> Lagu wajib dipastikan masuk, namun urutan slotnya diacak alami.</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="guide-step-card">
+              <div class="step-badge">Langkah 3</div>
+              <div class="step-content">
+                <h4>Atur Komposisi & Jumlah File Output</h4>
+                <p>Gunakan slider interaktif untuk menyesuaikan:</p>
+                <ul>
+                  <li><strong>Panjang Lagu per Output:</strong> Jumlah lagu dalam 1 file gabungan (misal: 5 lagu = 1 Wajib + 4 Random).</li>
+                  <li><strong>Target Jumlah File Output:</strong> Berapa buah file MP3 baru yang ingin dibuat (misal: 10 buah file MP3 unik).</li>
+                  <li><strong>Efek Transisi (Crossfade):</strong> Geser slider jika ingin ada efek fade-in/fade-out halus antar lagu.</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="guide-step-card">
+              <div class="step-badge">Langkah 4</div>
+              <div class="step-content">
+                <h4>Tentukan Folder Simpan & Mulai Merge</h4>
+                <p>Pilih folder tujuan di bagian <strong>"3. Folder Penyimpanan Hasil"</strong>, lalu klik tombol hijau <strong>"Mulai Proses Merge (Batch)"</strong>. Progress bar dan urutan lagu yang sedang digabung akan ditampilkan secara live.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Folders Manual -->
+        <div class="tab-pane" id="tab-folders">
+          <div class="guide-highlight-box">
+            <div class="highlight-icon">🛡️</div>
+            <div class="highlight-text">
+              <h4>Aplikasi Bersih Tanpa Folder Otomatis (Clean Workspace)</h4>
+              <p>Aplikasi ini <strong>TIDAK MEMBUAT FOLDER OTOMATIS</strong> di tempat file <code>.exe</code> berada saat dibuka. Direktori komputer Anda akan tetap rapi dan bersih 100%.</p>
+            </div>
+          </div>
+
+          <div class="folder-instructions-box">
+            <h4>Cara Mengatur Folder Secara Manual:</h4>
+            <div class="folder-instruction-item">
+              <span class="folder-num">1</span>
+              <div>
+                <strong>Lagu Wajib (Mandatory):</strong>
+                <p>Pada kotak nomor 1, klik <em>"Pilih Folder Wajib"</em> lalu arahkan ke folder musik Anda di drive mana saja (contoh: <code>D:\Koleksi Lagu\Intro</code>).</p>
+              </div>
+            </div>
+
+            <div class="folder-instruction-item">
+              <span class="folder-num">2</span>
+              <div>
+                <strong>Pool Lagu Random (Acak):</strong>
+                <p>Pada kotak nomor 2, klik <em>"Pilih Folder Pool"</em> lalu arahkan ke folder kumpulan lagu acak Anda (contoh: <code>D:\Koleksi Lagu\All Tracks</code>).</p>
+              </div>
+            </div>
+
+            <div class="folder-instruction-item">
+              <span class="folder-num">3</span>
+              <div>
+                <strong>Folder Penyimpanan Hasil (Output):</strong>
+                <p>Pada kotak nomor 3 di bawah, klik <em>"Pilih Folder Output"</em> dan tentukan di mana file MP3 hasil gabungan ingin disimpan (contoh: <code>D:\Hasil Podcast Mix</code>).</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Modes -->
+        <div class="tab-pane" id="tab-modes">
+          <div class="mode-cards-grid">
+            <div class="mode-card">
+              <div class="mode-card-header">
+                <span class="mode-icon">🔀</span>
+                <h4>Mode Giliran Lagu Wajib</h4>
+              </div>
+              <p>Jika Anda memasukkan <strong>lebih dari 1 lagu</strong> di folder Lagu Wajib:</p>
+              <ul>
+                <li><strong>Semua Wajib Masuk:</strong> Setiap file hasil merge akan memuat seluruh lagu wajib tersebut sekaligus.</li>
+                <li><strong>Ambil 1 Bergilir (Rotasi):</strong> Setiap file hasil merge hanya mengambil 1 lagu wajib secara bergantian (File 1 = Lagu Wajib A, File 2 = Lagu Wajib B, dst).</li>
+              </ul>
+            </div>
+
+            <div class="mode-card">
+              <div class="mode-card-header">
+                <span class="mode-icon">🧮</span>
+                <h4>Live Combinatorics & Anti-Duplikasi</h4>
+              </div>
+              <p>Di panel kanan, sistem menghitung kemungkinan kombinasi unik secara matematis:</p>
+              <ul>
+                <li><strong>100% Anti-Duplikasi:</strong> Sistem menggunakan cryptographic hash untuk memastikan tidak ada 2 file MP3 dengan urutan lagu yang sama persis dalam 1 batch proses.</li>
+                <li><strong>Laporan Playlist:</strong> Setiap selesai proses, file <code>playlist_summary.txt</code> akan disimpan otomatis di folder output untuk merekam daftar lagu di setiap file.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 4: Tips -->
+        <div class="tab-pane" id="tab-tips">
+          <div class="tips-list">
+            <div class="tip-card">
+              <div class="tip-badge">🎵 Kualitas Audio</div>
+              <h4>Auto Match Source Quality</h4>
+              <p>Secara default, aplikasi memindai bitrate lagu asli Anda dan menyesuaikan bitrate output secara otomatis (hingga 320 kbps) sehingga kualitas suara tetap jernih dan original (*lossless quality*).</p>
+            </div>
+
+            <div class="tip-card">
+              <div class="tip-badge">⚡ Kecepatan Proses</div>
+              <h4>Crossfade vs Sambung Cepat</h4>
+              <p>Jika slider Crossfade diatur ke <strong>0.0 Detik</strong>, proses penggabungan audio akan berjalan sangat cepat (*blazing fast*). Jika diatur 1–5 detik, FFmpeg akan melakukan mixing fade transisi halus.</p>
+            </div>
+
+            <div class="tip-card">
+              <div class="tip-badge">🎧 Pemutar Audio Bawaan</div>
+              <h4>Preview Langsung</h4>
+              <p>Setelah selesai, Anda bisa langsung memutar file MP3 hasil merge di pemutar audio bagian bawah layar tanpa perlu membuka aplikasi luar.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="btnUnderstandGuide">Saya Mengerti</button>
       </div>
     </div>
   </div>

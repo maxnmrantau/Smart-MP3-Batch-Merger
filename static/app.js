@@ -610,4 +610,63 @@ document.addEventListener('DOMContentLoaded', () => {
 
   openOutputFolderBtn.addEventListener('click', openOutputFolder);
   btnOpenOutputFolderDirect.addEventListener('click', openOutputFolder);
+
+  // =========================================================================
+  // Guide Modal Controller (Tabs & Open/Close)
+  // =========================================================================
+  const btnOpenGuide = document.getElementById('btnOpenGuide');
+  const guideModal = document.getElementById('guideModal');
+  const btnCloseGuide = document.getElementById('btnCloseGuide');
+  const btnUnderstandGuide = document.getElementById('btnUnderstandGuide');
+  const modalTabBtns = document.querySelectorAll('.modal-tabs .tab-btn');
+  const modalTabPanes = document.querySelectorAll('.modal-body .tab-pane');
+
+  function openGuideModal() {
+    if (guideModal) {
+      guideModal.classList.remove('hidden');
+    }
+  }
+
+  function closeGuideModal() {
+    if (guideModal) {
+      guideModal.classList.add('hidden');
+    }
+  }
+
+  if (btnOpenGuide) btnOpenGuide.addEventListener('click', openGuideModal);
+  if (btnCloseGuide) btnCloseGuide.addEventListener('click', closeGuideModal);
+  if (btnUnderstandGuide) btnUnderstandGuide.addEventListener('click', closeGuideModal);
+
+  // Close when clicking outside modal card on the backdrop
+  if (guideModal) {
+    guideModal.addEventListener('click', (e) => {
+      if (e.target === guideModal) {
+        closeGuideModal();
+      }
+    });
+  }
+
+  // Close on ESC key
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && guideModal && !guideModal.classList.contains('hidden')) {
+      closeGuideModal();
+    }
+  });
+
+  // Modal Tab Switching
+  modalTabBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const targetTabId = btn.getAttribute('data-tab');
+      
+      modalTabBtns.forEach(b => b.classList.remove('active'));
+      modalTabPanes.forEach(p => p.classList.remove('active'));
+
+      btn.classList.add('active');
+      const targetPane = document.getElementById(targetTabId);
+      if (targetPane) {
+        targetPane.classList.add('active');
+      }
+    });
+  });
 });
+
