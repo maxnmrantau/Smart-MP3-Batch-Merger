@@ -1,4 +1,4 @@
-<img width="1322" height="870" alt="20260829-085124" src="https://github.com/user-attachments/assets/8ee34a0c-000e-45e5-a7b5-630696219f29" />
+<img width="1326" height="873" alt="image" src="https://github.com/user-attachments/assets/e36faf16-abeb-43f5-a939-394b6a424508" />
 
 
 # 🎵 Smart MP3 Batch Merger & Randomizer
