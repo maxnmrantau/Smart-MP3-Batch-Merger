@@ -46,9 +46,16 @@ WORKSPACE_MANDATORY_DIR = os.path.join(WORKSPACE_INPUTS_DIR, "mandatory")
 WORKSPACE_RANDOM_DIR = os.path.join(WORKSPACE_INPUTS_DIR, "random")
 WORKSPACE_OUTPUT_DIR = os.path.join(BASE_DIR, "output_merged_tracks")
 
+os.makedirs(WORKSPACE_MANDATORY_DIR, exist_ok=True)
+os.makedirs(WORKSPACE_RANDOM_DIR, exist_ok=True)
+os.makedirs(WORKSPACE_OUTPUT_DIR, exist_ok=True)
+
 # Global state for merge background task
+merge_cancel_event = threading.Event()
+merge_proc_holder: Dict[str, Any] = {"proc": None}
 merge_task_state = {
     "is_running": False,
+    "cancel_requested": False,
     "current_index": 0,
     "total_files": 0,
     "current_filename": "",
@@ -60,9 +67,17 @@ merge_task_state = {
 }
 state_lock = threading.Lock()
 
+# Global state for async (non-blocking) folder dialog
+_folder_dialog_lock = threading.Lock()
+_folder_dialog_state = {
+    "running": False,   # True while dialog is open
+    "result": None,     # None = not done yet, "" = cancelled, "path" = selected
+}
 
-def run_folder_dialog(title="Pilih Folder"):
-    """Runs native Windows folder dialog."""
+
+def _run_folder_dialog_sync(title: str) -> str:
+    """Runs native Windows folder dialog using Tkinter topmost as primary, with PowerShell topmost fallback."""
+    # 1. Primary: Tkinter with topmost window (instant, native, zero delay)
     try:
         import tkinter as tk
         from tkinter import filedialog
@@ -72,20 +87,118 @@ def run_folder_dialog(title="Pilih Folder"):
         root.focus_force()
         folder = filedialog.askdirectory(title=title)
         root.destroy()
-        if folder:
+        if folder and os.path.isdir(folder):
             return os.path.normpath(folder)
+        return ""  # User cancelled
+    except Exception as e:
+        print(f"[FolderDialog] Tkinter error, trying PowerShell: {e}")
+
+    # 2. Fallback: PowerShell with TopMost form
+    if sys.platform == "win32":
+        try:
+            ps_script = (
+                'Add-Type -AssemblyName System.Windows.Forms; '
+                '$d = New-Object System.Windows.Forms.FolderBrowserDialog; '
+                f'$d.Description = "{title}"; '
+                '$d.ShowNewFolderButton = $true; '
+                '$top = New-Object System.Windows.Forms.Form; '
+                '$top.TopMost = $true; '
+                '$top.StartPosition = "CenterScreen"; '
+                'if ($d.ShowDialog($top) -eq [System.Windows.Forms.DialogResult]::OK) {{ Write-Output $d.SelectedPath }}; '
+                '$top.Dispose()'
+            )
+            creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+            res = subprocess.run(
+                ["powershell", "-NoProfile", "-Command", ps_script],
+                capture_output=True,
+                text=True,
+                creationflags=creationflags,
+                timeout=120
+            )
+            if res.returncode == 0:
+                selected = res.stdout.strip()
+                if selected and os.path.isdir(selected):
+                    return os.path.normpath(selected)
+                return ""
+        except Exception as e:
+            print(f"[FolderDialog] PowerShell error: {e}")
+
+    return ""
+
+
+def _start_folder_dialog_thread(title: str):
+    """Launches the folder dialog in a background thread so the HTTP server stays responsive."""
+    global _folder_dialog_state
+    with _folder_dialog_lock:
+        if _folder_dialog_state["running"]:
+            return  # already open
+        _folder_dialog_state["running"] = True
+        _folder_dialog_state["result"] = None
+
+    def _worker():
+        global _folder_dialog_state
+        result = _run_folder_dialog_sync(title)
+        with _folder_dialog_lock:
+            _folder_dialog_state["result"] = result
+            _folder_dialog_state["running"] = False
+
+    t = threading.Thread(target=_worker, daemon=True)
+    t.start()
+
+
+def _run_file_dialog_sync(title: str = "Pilih File Audio") -> str:
+    """Runs native Windows file picker dialog using Tkinter topmost window."""
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        root = tk.Tk()
+        root.withdraw()
+        root.wm_attributes("-topmost", 1)
+        root.focus_force()
+        file_path = filedialog.askopenfilename(
+            title=title,
+            filetypes=[
+                ("Audio Files (*.mp3, *.wav, *.m4a, *.aac, *.flac, *.ogg)", "*.mp3;*.wav;*.m4a;*.aac;*.flac;*.ogg;*.wma"),
+                ("All Files (*.*)", "*.*")
+            ]
+        )
+        root.destroy()
+        if file_path and os.path.isfile(file_path):
+            return os.path.normpath(file_path)
         return ""
     except Exception as e:
-        print(f"Folder dialog error: {e}")
+        print(f"[FileDialog] Tkinter error: {e}")
         return ""
+
+
+def _start_file_dialog_thread(title: str = "Pilih File Audio"):
+    """Launches the file dialog in a background thread so the HTTP server stays responsive."""
+    global _folder_dialog_state
+    with _folder_dialog_lock:
+        if _folder_dialog_state["running"]:
+            return
+        _folder_dialog_state["running"] = True
+        _folder_dialog_state["result"] = None
+
+    def _worker():
+        global _folder_dialog_state
+        result = _run_file_dialog_sync(title)
+        with _folder_dialog_lock:
+            _folder_dialog_state["result"] = result
+            _folder_dialog_state["running"] = False
+
+    t = threading.Thread(target=_worker, daemon=True)
+    t.start()
 
 
 def background_merge_worker(config: Dict[str, Any]):
     """Background worker thread that runs the batch merging process."""
     global merge_task_state
     
+    merge_cancel_event.clear()
     with state_lock:
         merge_task_state["is_running"] = True
+        merge_task_state["cancel_requested"] = False
         merge_task_state["current_index"] = 0
         merge_task_state["total_files"] = 0
         merge_task_state["progress_percent"] = 0
@@ -145,6 +258,9 @@ def background_merge_worker(config: Dict[str, Any]):
         
         # 3. Process each playlist sequentially to keep RAM minimal (~50MB)
         for idx, pl in enumerate(playlists, start=1):
+            if merge_cancel_event.is_set():
+                raise InterruptedError("Proses merge dibatalkan oleh pengguna.")
+
             out_name = f"{output_prefix}_{idx:02d}_{songs_per_output}Songs.mp3"
             out_path = os.path.join(output_folder, out_name)
             
@@ -162,7 +278,9 @@ def background_merge_worker(config: Dict[str, Any]):
                 output_filepath=out_path,
                 target_bitrate=target_bitrate,
                 target_sample_rate=target_sample_rate,
-                crossfade_sec=crossfade_sec
+                crossfade_sec=crossfade_sec,
+                cancel_event=merge_cancel_event,
+                proc_holder=merge_proc_holder
             )
             
             # Record summary line
@@ -194,6 +312,10 @@ def background_merge_worker(config: Dict[str, Any]):
             merge_task_state["logs"].append(f"[OK] Laporan urutan lagu disimpan di: {os.path.basename(summary_path)}")
             merge_task_state["progress_percent"] = 100
             
+    except InterruptedError:
+        with state_lock:
+            merge_task_state["error"] = "Proses dibatalkan oleh pengguna."
+            merge_task_state["logs"].append("🛑 [BATAL] Penggabungan audio dihentikan atas permintaan pengguna.")
     except Exception as e:
         with state_lock:
             merge_task_state["error"] = str(e)
@@ -201,6 +323,9 @@ def background_merge_worker(config: Dict[str, Any]):
     finally:
         with state_lock:
             merge_task_state["is_running"] = False
+            merge_task_state["cancel_requested"] = False
+        merge_cancel_event.clear()
+        merge_proc_holder["proc"] = None
 
 
 class AppRequestHandler(SimpleHTTPRequestHandler):
@@ -213,6 +338,10 @@ class AppRequestHandler(SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        # Prevent browser from caching static files so code changes take effect immediately
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
         super().end_headers()
         
     def do_OPTIONS(self):
@@ -280,10 +409,40 @@ class AppRequestHandler(SimpleHTTPRequestHandler):
         path = parsed.path
         
         if path == "/api/browse-folder":
+            # Non-blocking: launch dialog in background thread and return immediately.
+            # Browser then polls /api/browse-folder-result.
             data = self._parse_post_json()
             title = data.get("title", "Pilih Folder")
-            selected_path = run_folder_dialog(title)
-            self._send_json({"folder": selected_path})
+            with _folder_dialog_lock:
+                already_running = _folder_dialog_state["running"]
+            if not already_running:
+                _start_folder_dialog_thread(title)
+            self._send_json({"status": "opening"})
+            return
+
+        if path == "/api/browse-file":
+            # Non-blocking: launch native file picker dialog in background thread.
+            data = self._parse_post_json()
+            title = data.get("title", "Pilih File Audio")
+            with _folder_dialog_lock:
+                already_running = _folder_dialog_state["running"]
+            if not already_running:
+                _start_file_dialog_thread(title)
+            self._send_json({"status": "opening"})
+            return
+
+        if path == "/api/browse-folder-result":
+            # Returns the dialog result; "pending" while dialog is still open.
+            with _folder_dialog_lock:
+                running = _folder_dialog_state["running"]
+                result = _folder_dialog_state["result"]
+            if running or result is None:
+                self._send_json({"status": "pending"})
+            else:
+                # Clear result so next call to browse works fresh
+                with _folder_dialog_lock:
+                    _folder_dialog_state["result"] = None
+                self._send_json({"status": "done", "folder": result})
             return
             
         elif path == "/api/upload-files":
@@ -319,10 +478,14 @@ class AppRequestHandler(SimpleHTTPRequestHandler):
             data = self._parse_post_json()
             target = data.get("target", "mandatory")
             clear_dir = WORKSPACE_MANDATORY_DIR if target == "mandatory" else WORKSPACE_RANDOM_DIR
+            os.makedirs(clear_dir, exist_ok=True)
             for f in os.listdir(clear_dir):
                 fp = os.path.join(clear_dir, f)
                 if os.path.isfile(fp):
-                    os.remove(fp)
+                    try:
+                        os.remove(fp)
+                    except Exception:
+                        pass
             self._send_json({"status": "cleared", "folder": clear_dir})
             return
             
@@ -383,6 +546,23 @@ class AppRequestHandler(SimpleHTTPRequestHandler):
             self._send_json({"status": "started", "message": "Proses merge batch telah dimulai."})
             return
             
+        elif path == "/api/cancel-merge":
+            with state_lock:
+                if merge_task_state["is_running"]:
+                    merge_task_state["cancel_requested"] = True
+                    merge_cancel_event.set()
+                    proc = merge_proc_holder.get("proc")
+                    if proc and proc.poll() is None:
+                        try:
+                            proc.terminate()
+                        except Exception:
+                            pass
+                    merge_task_state["logs"].append("⚠️ Permintaan pembatalan diterima. Menghentikan proses...")
+                    self._send_json({"status": "cancelling", "message": "Proses pembatalan dikirim."})
+                    return
+            self._send_json({"status": "idle", "message": "Tidak ada proses yang sedang berjalan."})
+            return
+            
         elif path == "/api/open-output-folder":
             data = self._parse_post_json()
             folder_path = data.get("folder", "").strip() or WORKSPACE_OUTPUT_DIR
@@ -391,7 +571,7 @@ class AppRequestHandler(SimpleHTTPRequestHandler):
             
             try:
                 if sys.platform == "win32":
-                    subprocess.Popen(f'explorer "{folder_path}"', shell=True)
+                    os.startfile(folder_path)
                 elif sys.platform == "darwin":
                     subprocess.run(["open", folder_path])
                 else:

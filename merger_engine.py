@@ -7,12 +7,14 @@ Supports standalone portable bundled FFmpeg/FFprobe binaries and system PATH.
 
 import os
 import sys
+import time
 import json
 import math
 import random
 import hashlib
 import shutil
 import subprocess
+import threading
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 
@@ -74,8 +76,18 @@ def get_ffprobe_info(file_path: str) -> Dict[str, Any]:
         "-show_streams",
         file_path
     ]
+    creationflags = 0
+    if sys.platform == "win32":
+        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
     try:
-        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+        res = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True,
+            creationflags=creationflags
+        )
         data = json.loads(res.stdout)
         
         duration = 0.0
@@ -151,12 +163,25 @@ def format_duration(seconds: float) -> str:
 
 
 def scan_audio_folder(folder_path: str) -> List[Dict[str, Any]]:
-    """Scans a directory for all supported audio files and inspects metadata."""
-    if not folder_path or not os.path.isdir(folder_path):
+    """Scans a directory or a single audio file for supported audio files and inspects metadata."""
+    if not folder_path:
+        return []
+        
+    norm_path = os.path.normpath(folder_path.strip().strip('"').strip("'"))
+    
+    # If a direct file path was provided
+    if os.path.isfile(norm_path):
+        ext = Path(norm_path).suffix.lower()
+        if ext in SUPPORTED_EXTENSIONS:
+            info = get_ffprobe_info(norm_path)
+            return [info]
+        return []
+        
+    if not os.path.isdir(norm_path):
         return []
         
     audio_files = []
-    for entry in sorted(os.scandir(folder_path), key=lambda e: e.name.lower()):
+    for entry in sorted(os.scandir(norm_path), key=lambda e: e.name.lower()):
         if entry.is_file():
             ext = Path(entry.name).suffix.lower()
             if ext in SUPPORTED_EXTENSIONS:
@@ -340,11 +365,17 @@ def merge_playlist_to_mp3(
     target_bitrate: int = 320,
     target_sample_rate: int = 44100,
     crossfade_sec: float = 0.0,
-    normalize_volume: bool = False
+    normalize_volume: bool = False,
+    cancel_event: Optional[Any] = None,
+    proc_holder: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
     Merges a list of audio files into a single MP3 file using FFmpeg with high efficiency.
+    Supports graceful real-time cancellation and active process termination.
     """
+    if cancel_event and getattr(cancel_event, "is_set", lambda: False)():
+        raise InterruptedError("Proses merge dibatalkan oleh pengguna.")
+
     ffmpeg_cmd = get_ffmpeg_bin()
     os.makedirs(os.path.dirname(os.path.abspath(output_filepath)), exist_ok=True)
     n = len(playlist)
@@ -360,50 +391,114 @@ def merge_playlist_to_mp3(
             "-ar", str(target_sample_rate),
             output_filepath
         ]
-        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        if res.returncode != 0:
-            raise RuntimeError(f"FFmpeg error: {res.stderr}")
-        return get_ffprobe_info(output_filepath)
-        
-    input_args = []
-    for track in playlist:
-        input_args.extend(["-i", track["path"]])
-        
-    if crossfade_sec > 0 and n > 1:
-        filter_parts = []
-        last_label = "0:a"
-        for i in range(1, n):
-            out_label = f"a{i}" if i < n - 1 else "outa"
-            filter_parts.append(f"[{last_label}][{i}:a]acrossfade=d={crossfade_sec}:c1=tri:c2=tri[{out_label}]")
-            last_label = out_label
-        filter_complex = ";".join(filter_parts)
     else:
-        stream_inputs = "".join([f"[{i}:a]" for i in range(n)])
-        filter_complex = f"{stream_inputs}concat=n={n}:v=0:a=1[outa]"
-        
-    audio_filters = []
-    if normalize_volume:
-        audio_filters.append("loudnorm=I=-16:LRA=11:TP=-1.5")
-        
-    if audio_filters:
-        filter_complex += f";[outa]{','.join(audio_filters)}[finala]"
-        map_target = "[finala]"
-    else:
-        map_target = "[outa]"
-        
-    cmd = [
-        ffmpeg_cmd, "-y",
-        *input_args,
-        "-filter_complex", filter_complex,
-        "-map", map_target,
-        "-c:a", "libmp3lame",
-        "-b:a", f"{target_bitrate}k",
-        "-ar", str(target_sample_rate),
-        output_filepath
-    ]
+        input_args = []
+        for track in playlist:
+            input_args.extend(["-i", track["path"]])
+            
+        # Standardize each stream to target sample rate and stereo layout
+        # to prevent sample rate / channel layout mismatch errors in concat or acrossfade
+        resample_filters = []
+        for i in range(n):
+            resample_filters.append(f"[{i}:a]aformat=sample_rates={target_sample_rate}:channel_layouts=stereo[s{i}]")
+        resample_str = ";".join(resample_filters)
+
+        if crossfade_sec > 0 and n > 1:
+            filter_parts = [resample_str]
+            last_label = "s0"
+            for i in range(1, n):
+                out_label = f"cf{i}" if i < n - 1 else "outa"
+                filter_parts.append(f"[{last_label}][s{i}]acrossfade=d={crossfade_sec}:c1=tri:c2=tri[{out_label}]")
+                last_label = out_label
+            filter_complex = ";".join(filter_parts)
+        else:
+            stream_inputs = "".join([f"[s{i}]" for i in range(n)])
+            filter_complex = f"{resample_str};{stream_inputs}concat=n={n}:v=0:a=1[outa]"
+            
+        audio_filters = []
+        if normalize_volume:
+            audio_filters.append("loudnorm=I=-16:LRA=11:TP=-1.5")
+            
+        if audio_filters:
+            filter_complex += f";[outa]{','.join(audio_filters)}[finala]"
+            map_target = "[finala]"
+        else:
+            map_target = "[outa]"
+            
+        cmd = [
+            ffmpeg_cmd, "-y",
+            *input_args,
+            "-filter_complex", filter_complex,
+            "-map", map_target,
+            "-c:a", "libmp3lame",
+            "-b:a", f"{target_bitrate}k",
+            "-ar", str(target_sample_rate),
+            output_filepath
+        ]
     
-    res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    if res.returncode != 0:
-        raise RuntimeError(f"FFmpeg error: {res.stderr}")
+    creationflags = 0
+    if sys.platform == "win32":
+        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        creationflags=creationflags
+    )
+
+    if proc_holder is not None:
+        proc_holder["proc"] = proc
+
+    stderr_chunks = []
+    def _drain_stderr():
+        try:
+            for line in iter(proc.stderr.readline, ''):
+                if line:
+                    stderr_chunks.append(line)
+        except Exception:
+            pass
+
+    t_err = threading.Thread(target=_drain_stderr, daemon=True)
+    t_err.start()
+
+    cancelled = False
+    try:
+        while True:
+            ret = proc.poll()
+            if ret is not None:
+                break
+            if cancel_event and getattr(cancel_event, "is_set", lambda: False)():
+                cancelled = True
+                try:
+                    proc.terminate()
+                    proc.wait(timeout=1.5)
+                except Exception:
+                    try:
+                        proc.kill()
+                    except Exception:
+                        pass
+                break
+            time.sleep(0.08)
+    finally:
+        if proc_holder is not None:
+            proc_holder["proc"] = None
+
+    t_err.join(timeout=2.0)
+
+    if cancelled:
+        if os.path.isfile(output_filepath):
+            try:
+                os.remove(output_filepath)
+            except Exception:
+                pass
+        raise InterruptedError("Proses merge dibatalkan oleh pengguna.")
+
+    if proc.returncode != 0:
+        err_msg = "".join(stderr_chunks[-25:]) if stderr_chunks else "Unknown FFmpeg error"
+        raise RuntimeError(f"FFmpeg error: {err_msg}")
         
     return get_ffprobe_info(output_filepath)

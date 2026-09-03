@@ -4,6 +4,40 @@ Semua pembaruan dan perubahan pada proyek **Smart MP3 Batch Merger** akan dicata
 
 ---
 
+## [v2.1.0] - 2026-09-03
+
+### 🚀 Pembaruan & Peningkatan (Stability & Performance Release):
+
+#### 1. ⚡ Perbaikan Total Deadlock Rendering FFmpeg (Anti-Stuck)
+- Memperbaiki masalah kritis di mana proses rendering audio berhenti/membeku (*stuck*) di status `[1/N] Memproses...`.
+- Masalah disebabkan oleh OS Pipe Buffer `stderr` Windows (4 KB) yang penuh saat proses penggabungan. Ditambahkan *asynchronous background stderr reader thread* yang menguras saluran output FFmpeg secara berkelanjutan, membuat proses render berjalan pada kecepatan 100% tanpa henti.
+
+#### 2. 🎚️ Auto-Resampling Audio Universal (Dukungan Penuh WAV, MP3, AAC, FLAC)
+- Mengintegrasikan filter konversi format audio `aformat=sample_rates=...:channel_layouts=stereo` otomatis sebelum proses penggabungan/crossfade.
+- Menjamin kelancaran penggabungan antar berbagai format file audio yang memiliki resolusi sample rate atau channel berbeda (misalnya mencampur WAV 48 kHz stereo dengan MP3 44.1 kHz) tanpa error *concat parameter mismatch*.
+
+#### 3. 🎵 Dukungan Penuh Input 1 Lagu Langsung (Single Audio File)
+- Mesin pemindai audio kini secara cerdas mengenali file audio tunggal langsung (misal: `D:\Music\Intro.mp3`) tanpa harus dimasukkan ke dalam folder terpisah.
+- Tombol **"Pilih File Lagu"** kini memanggil Windows File Open Dialog native (`-topmost`) yang instan dan langsung menghubungkan file lokal tanpa proses unggah yang lambat.
+
+#### 4. 🪟 Dialog Pemilihan Folder Native Windows Instan & Selalu Terdepan
+- Menggantikan skrip dialog lama dengan implementasi Tkinter native Windows berkecepatan tinggi (0.05 detik) dengan atribut `-topmost` dan `focus_force()`.
+- Jendela pemilihan folder dan file kini selalu muncul di baris paling depan (di atas aplikasi) dan tidak lagi tersembunyi di balik browser atau taskbar.
+- Mengeliminasi pembekuan antarmuka (*UI freeze*) dengan arsitektur *non-blocking async-polling*.
+
+#### 5. 🛑 Tombol Batal Real-Time (`Batal`)
+- Menambahkan tombol pembatalan interaktif saat proses *batch merging* sedang berjalan.
+- Menghentikan proses FFmpeg yang aktif secara aman, membersihkan file sementara, dan mengembalikan UI ke status siap pakai tanpa menimbulkan file korup atau aplikasi crash.
+
+#### 6. 🧠 Smart UI Auto-Adjust & Validasi Cerdas
+- Slider **"Jumlah Lagu per Output File"** kini otomatis menyesuaikan batas minimalnya secara dinamis saat mode *"Semua Wajib Masuk"* aktif.
+- Mencegah kontradiksi matematika yang membingungkan (misalnya memasukkan 7 lagu wajib ke dalam 1 file yang berkapasitas 3 lagu) dengan peringatan instruksi yang ramah dan solutif sebelum proses dimulai.
+
+#### 7. 🛠️ Pemulihan Pintasan F12 & Klik Kanan (Developer Tools)
+- Mengaktifkan kembali tombol **F12** dan klik kanan (*Inspect element*) sehingga pengguna dan pengembang dapat memeriksa log konsol browser dengan bebas saat mendiagnosis sistem.
+
+---
+
 ## [v2.0.0] - 2026-08-29
 
 ### 🚀 Pembaruan Utama (Major Highlights):

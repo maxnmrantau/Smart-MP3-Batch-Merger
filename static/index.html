@@ -22,7 +22,7 @@
         <div>
           <div class="title-with-badge">
             <h1 class="app-title">Smart MP3 Batch Merger</h1>
-            <span class="app-version-badge">v2.0.0</span>
+            <span class="app-version-badge">v2.1.0</span>
           </div>
           <p class="app-subtitle">Audio Combinatorics & Intelligent Randomizer Engine</p>
         </div>
@@ -280,10 +280,16 @@
 
         <!-- Start Merge Card -->
         <section class="card glass-card action-card-container">
-          <button type="button" class="btn btn-primary btn-large" id="startMergeBtn">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-            <span>Mulai Proses Merge (Batch)</span>
-          </button>
+          <div class="merge-action-row">
+            <button type="button" class="btn btn-primary btn-large" id="startMergeBtn">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              <span>Mulai Proses Merge (Batch)</span>
+            </button>
+            <button type="button" class="btn btn-danger btn-large hidden" id="cancelMergeBtn" title="Batalkan proses merge yang sedang berjalan">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+              <span>Batal</span>
+            </button>
+          </div>
 
           <!-- Progress Section -->
           <div class="progress-container hidden" id="progressContainer">

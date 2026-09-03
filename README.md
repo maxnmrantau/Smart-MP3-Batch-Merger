@@ -9,15 +9,15 @@
 
 <p align="center">
   <strong>Intelligent Audio Combinatorics & Batch Randomizer Engine</strong><br>
-  <em>Versi 2.0.0 — Ditenagai oleh Python, FFmpeg 8.1, Native Microsoft WebView2, dan Modern Dark Glassmorphism UI.</em>
+  <em>Versi 2.1.0 — Ditenagai oleh Python, FFmpeg 8.1, Native Microsoft WebView2, dan Modern Dark Glassmorphism UI.</em>
 </p>
 
 <p align="center">
-  <a href="https://github.com/maxnmrantau/Smart-MP3-Batch-Merger/releases/tag/v2.0.0"><img src="https://img.shields.io/badge/Download-v2.0.0%20Portable%20EXE-00f2fe?style=for-the-badge&logo=windows" alt="Download EXE"></a>
+  <a href="https://github.com/maxnmrantau/Smart-MP3-Batch-Merger/releases/tag/v2.1.0"><img src="https://img.shields.io/badge/Download-v2.1.0%20Portable%20EXE-00f2fe?style=for-the-badge&logo=windows" alt="Download EXE"></a>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.0.0-00f2fe.svg" alt="Version 2.0.0">
+  <img src="https://img.shields.io/badge/Version-2.1.0-00f2fe.svg" alt="Version 2.1.0">
   <img src="https://img.shields.io/badge/GUI-Native%20WebView2-10b981.svg" alt="Native WebView2">
   <img src="https://img.shields.io/badge/License-MIT-a855f7.svg" alt="License MIT">
   <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-blue.svg" alt="Windows 10/11">
@@ -113,28 +113,27 @@ $$\text{Variasi Unik} = P(n, k) = \frac{n!}{(n - k)!}$$
 
 ---
 
-## 🌟 Apa yang Baru di Versi 2.0.0? (New in v2.0.0)
+## 🌟 Apa yang Baru di Versi 2.1.0? (New in v2.1.0)
 
-1. 🪟 **Native Microsoft WebView2 Desktop Window (`pywebview`)**:
-   * Menjadi aplikasi desktop murni tanpa membuka jendela browser luar (`msedge.exe`).
-   * Bebas dari pesan error browser offline (*ERR_CONNECTION_REFUSED*) saat PC baru dinyalakan (*cold boot*).
-   * Penggunaan RAM sangat hemat (**~40–60 MB**) dan didukung akselerasi GPU DirectX.
-
-2. 🛡️ **Clean Workspace Architecture (Bebas Folder Otomatis)**:
-   * Aplikasi tidak lagi membuat folder-folder baru secara otomatis saat startup. Direktori kerja tempat file `.exe` berada tetap 100% bersih.
-
-3. 📖 **Tombol & Modal Panduan Interaktif Terpadu**:
-   * Tombol **"Panduan"** di pojok kanan atas dengan 4 tab interaktif (*Alur Kerja*, *Panduan Folder Manual*, *Mode Lagu*, dan *Tips Kualitas Audio*).
-
-4. ⚡ **Binding IPv4 Eksplisit & Toleransi Startup Adaptif**:
-   * Mengikat server internal ke `127.0.0.1:8765` untuk mencegah konflik IPv6 `[::1]`.
+1. ⚡ **Anti-Stuck FFmpeg Render Engine**:
+   * Menghilangkan *pipe buffer deadlock* Windows yang sebelumnya membuat proses render macet di 0%. Proses batch merge kini berjalan dengan kecepatan 100% penuh.
+2. 🎚️ **Universal Audio Resampling**:
+   * Mendukung pencampuran otomatis berbagai format file (`.wav`, `.mp3`, `.m4a`, `.flac`, dll.) dan resolusi sample rate berbeda tanpa error konfigurasi.
+3. 🎵 **Dukungan Input 1 Lagu Langsung (Single File)**:
+   * Mesin pemindai kini mengenali file audio tunggal langsung. Tombol *"Pilih File Lagu"* memanggil dialog file native Windows (`-topmost`) yang instan.
+4. 🪟 **Dialog Windows Explorer Instan & Selalu Terdepan**:
+   * Dialog pemilihan folder dan file kini selalu muncul di baris paling depan (di atas aplikasi) secara instan tanpa membuat UI membeku (*freeze*).
+5. 🛑 **Tombol Batal Real-Time (`Batal`)**:
+   * Memungkinkan pengguna membatalkan proses batch merging kapan saja secara aman tanpa file korup.
+6. 🧠 **Smart UI Auto-Adjust & Validasi Cerdas**:
+   * Slider jumlah lagu otomatis menyesuaikan batas minimalnya secara dinamis saat mode *"Semua Wajib Masuk"* dipilih.
 
 ---
 
 ## 🚀 Cara Menjalankan (Getting Started)
 
 ### 1. Menggunakan File Portable EXE (Siap Pakai - Disarankan):
-Unduh file **`Smart_MP3_Merger.exe`** dari halaman [GitHub Releases](https://github.com/maxnmrantau/Smart-MP3-Batch-Merger/releases/tag/v2.0.0) lalu klik ganda untuk menjalankannya. Tidak memerlukan instalasi Python apa pun.
+Unduh file **`Smart_MP3_Merger.exe`** dari halaman [GitHub Releases](https://github.com/maxnmrantau/Smart-MP3-Batch-Merger/releases/tag/v2.1.0) lalu klik ganda untuk menjalankannya. Tidak memerlukan instalasi Python apa pun.
 
 ### 2. Menjalankan dari Source Code (Python):
 ```bash
@@ -174,7 +173,7 @@ MP3 Merger/
 ├── run.bat                      # Launcher Web App lokal
 ├── server.py                    # Multi-threaded backend HTTP server & REST API
 ├── Smart MP3 Merger Desktop.bat # Launcher Desktop App
-├── static/                      # Antarmuka Modern Glassmorphism (v2.0.0)
+├── static/                      # Antarmuka Modern Glassmorphism (v2.1.0)
 │   ├── app.js                   # Logika interaktif frontend & modal panduan
 │   ├── favicon.ico              # Favicon
 │   ├── icon.png                 # Icon logo resolusi tinggi

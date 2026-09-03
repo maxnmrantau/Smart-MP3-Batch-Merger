@@ -5,7 +5,7 @@
  */
 
 // =========================================================================
-// Native App Lockdown: Disable Browser Zoom, Gesture Pinch, & Context Menu
+// Native App Lockdown: Disable Browser Zoom & Gesture Pinch
 // =========================================================================
 window.addEventListener('wheel', (e) => {
   if (e.ctrlKey) {
@@ -14,11 +14,8 @@ window.addEventListener('wheel', (e) => {
 }, { passive: false });
 
 window.addEventListener('keydown', (e) => {
-  // Disable Ctrl + Plus, Minus, 0, =, F11, F12, Ctrl+R
-  if (e.ctrlKey && ['+', '-', '=', '0', 'r', 'R'].includes(e.key)) {
-    e.preventDefault();
-  }
-  if (['F11', 'F12'].includes(e.key)) {
+  // Disable Ctrl + Plus, Minus, 0, = (zoom shortcuts)
+  if (e.ctrlKey && ['+', '-', '=', '0'].includes(e.key)) {
     e.preventDefault();
   }
 });
@@ -27,13 +24,6 @@ window.addEventListener('keydown', (e) => {
 document.addEventListener('gesturestart', (e) => e.preventDefault());
 document.addEventListener('gesturechange', (e) => e.preventDefault());
 document.addEventListener('gestureend', (e) => e.preventDefault());
-
-// Disable right-click menu on non-input areas
-document.addEventListener('contextmenu', (e) => {
-  if (!['INPUT', 'TEXTAREA'].includes(e.target.tagName)) {
-    e.preventDefault();
-  }
-});
 
 document.addEventListener('DOMContentLoaded', () => {
   // DOM Elements - Inputs
@@ -63,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnOpenOutputFolderDirect = document.getElementById('btnOpenOutputFolderDirect');
 
   const startMergeBtn = document.getElementById('startMergeBtn');
+  const cancelMergeBtn = document.getElementById('cancelMergeBtn');
   const openOutputFolderBtn = document.getElementById('openOutputFolderBtn');
 
   // Badges & Chips
@@ -128,18 +119,149 @@ document.addEventListener('DOMContentLoaded', () => {
     .catch(() => {});
 
   // =========================================================================
-  // HTML5 Picker Click Handlers (Mandatory & Random)
+  // Native Folder Picker & Action Handlers
   // =========================================================================
-  btnPickMandatoryFolder.addEventListener('click', () => {
-    mandatoryFolderPicker.click();
+  let isBrowsingFolder = false;
+
+  async function browseLocalFolder(title = "Pilih Folder") {
+    console.log('[browseLocalFolder] Called. isBrowsingFolder =', isBrowsingFolder);
+    if (isBrowsingFolder) {
+      console.warn('[browseLocalFolder] Already browsing, skipping.');
+      return null;
+    }
+    isBrowsingFolder = true;
+
+    try {
+      // Step 1: Tell server to open the dialog (returns immediately — non-blocking)
+      console.log('[browseLocalFolder] Sending POST /api/browse-folder...');
+      const startResp = await fetch('/api/browse-folder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title })
+      });
+      console.log('[browseLocalFolder] Response status:', startResp.status);
+      if (!startResp.ok) {
+        console.error('[browseLocalFolder] browse-folder failed:', startResp.status);
+        return null;
+      }
+
+      // Step 2: Poll /api/browse-folder-result every 400ms until the dialog closes
+      const MAX_WAIT_MS = 180000; // 3 minutes max
+      const POLL_MS = 400;
+      const deadline = Date.now() + MAX_WAIT_MS;
+
+      while (Date.now() < deadline) {
+        await new Promise(r => setTimeout(r, POLL_MS));
+        try {
+          const pollResp = await fetch('/api/browse-folder-result', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+          });
+          if (!pollResp.ok) continue;
+          const data = await pollResp.json();
+          if (data.status === 'done') {
+            console.log('[browseLocalFolder] Got result:', data.folder);
+            return data.folder || null;
+          }
+          // status === 'pending' — keep polling
+        } catch (e) {
+          console.warn('[App] poll error:', e);
+        }
+      }
+
+      console.warn('[browseLocalFolder] Timeout reached.');
+      return null;
+    } catch (e) {
+      console.error("[App] browseLocalFolder error:", e);
+      return null;
+    } finally {
+      isBrowsingFolder = false;
+      console.log('[browseLocalFolder] Reset isBrowsingFolder = false');
+    }
+  }
+
+  async function browseLocalFile(title = "Pilih File Audio") {
+    if (isBrowsingFolder) return null;
+    isBrowsingFolder = true;
+
+    try {
+      const startResp = await fetch('/api/browse-file', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title })
+      });
+      if (!startResp.ok) return null;
+
+      const MAX_WAIT_MS = 180000;
+      const POLL_MS = 350;
+      const deadline = Date.now() + MAX_WAIT_MS;
+
+      while (Date.now() < deadline) {
+        await new Promise(r => setTimeout(r, POLL_MS));
+        try {
+          const pollResp = await fetch('/api/browse-folder-result', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+          });
+          if (!pollResp.ok) continue;
+          const data = await pollResp.json();
+          if (data.status === 'done') {
+            return data.folder || null;
+          }
+        } catch (e) {
+          console.warn('[App] poll error:', e);
+        }
+      }
+      return null;
+    } catch (e) {
+      console.error("[App] browseLocalFile error:", e);
+      return null;
+    } finally {
+      isBrowsingFolder = false;
+    }
+  }
+
+  btnPickMandatoryFolder.addEventListener('click', async () => {
+    console.log('[UI] btnPickMandatoryFolder clicked');
+    addLog('⏳ Membuka dialog pemilihan folder...');
+    const folder = await browseLocalFolder("Pilih Folder Lagu Wajib (Mandatory)");
+    console.log('[UI] browseLocalFolder returned:', folder);
+    if (folder) {
+      mandatoryFolderInput.value = folder;
+      addLog(`📁 Folder Lagu Wajib diatur: ${folder}`);
+      await scanFolders();
+    } else {
+      addLog('ℹ️ Pemilihan folder dibatalkan.');
+    }
   });
 
-  btnPickMandatoryFiles.addEventListener('click', () => {
-    mandatoryFilesPicker.click();
+  btnPickMandatoryFiles.addEventListener('click', async () => {
+    console.log('[UI] btnPickMandatoryFiles clicked');
+    addLog('⏳ Membuka dialog pemilihan file lagu...');
+    const file = await browseLocalFile("Pilih File Lagu Wajib (Single MP3)");
+    if (file) {
+      mandatoryFolderInput.value = file;
+      addLog(`🎵 File Lagu Wajib dipilih: ${file}`);
+      await scanFolders();
+    } else {
+      // Fallback to browser file picker
+      mandatoryFilesPicker.click();
+    }
   });
 
-  btnPickRandomFolder.addEventListener('click', () => {
-    randomFolderPicker.click();
+  btnPickRandomFolder.addEventListener('click', async () => {
+    console.log('[UI] btnPickRandomFolder clicked');
+    addLog('⏳ Membuka dialog pemilihan folder...');
+    const folder = await browseLocalFolder("Pilih Folder Pool Lagu Random");
+    if (folder) {
+      randomFolderInput.value = folder;
+      addLog(`📁 Folder Lagu Random diatur: ${folder}`);
+      await scanFolders();
+    } else {
+      addLog('ℹ️ Pemilihan folder dibatalkan.');
+    }
   });
 
   btnPickRandomFiles.addEventListener('click', () => {
@@ -147,16 +269,15 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Output Folder Picker Trigger
-  btnPickOutputFolder.addEventListener('click', () => {
-    outputFolderPicker.click();
-  });
-
-  outputFolderPicker.addEventListener('change', (e) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const sampleFile = e.target.files[0];
-      const relPath = sampleFile.webkitRelativePath || "";
-      const folderName = relPath.split('/')[0] || "Custom_Output_Folder";
-      addLog(`📁 Folder output diatur: ${folderName}`);
+  btnPickOutputFolder.addEventListener('click', async () => {
+    console.log('[UI] btnPickOutputFolder clicked');
+    addLog('⏳ Membuka dialog pemilihan folder output...');
+    const folder = await browseLocalFolder("Pilih Folder Tujuan Output");
+    if (folder) {
+      outputFolderInput.value = folder;
+      addLog(`📁 Folder output diatur: ${folder}`);
+    } else {
+      addLog('ℹ️ Pemilihan folder dibatalkan.');
     }
   });
 
@@ -190,34 +311,43 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    addLog(`Mengunggah ${audioFiles.length} file audio ke slot ${target === 'mandatory' ? 'Lagu Wajib' : 'Lagu Random'}...`);
+    try {
+      addLog(`Mengunggah ${audioFiles.length} file audio ke slot ${target === 'mandatory' ? 'Lagu Wajib' : 'Lagu Random'}...`);
 
-    // Clear old workspace folder for this target
-    await fetch('/api/clear-folder', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ target })
-    });
-
-    // Upload each audio file
-    let uploadedFolder = '';
-    for (const file of audioFiles) {
-      const resp = await fetch(`/api/upload-files?target=${target}&filename=${encodeURIComponent(file.name)}`, {
+      // Clear old workspace folder for this target
+      await fetch('/api/clear-folder', {
         method: 'POST',
-        body: file
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target })
       });
-      const data = await resp.json();
-      if (data.folder) uploadedFolder = data.folder;
-    }
 
-    if (target === 'mandatory') {
-      mandatoryFolderInput.value = uploadedFolder;
-    } else {
-      randomFolderInput.value = uploadedFolder;
-    }
+      // Upload each audio file
+      let uploadedFolder = '';
+      for (const file of audioFiles) {
+        const resp = await fetch(`/api/upload-files?target=${target}&filename=${encodeURIComponent(file.name)}`, {
+          method: 'POST',
+          body: file
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.folder) uploadedFolder = data.folder;
+        }
+      }
 
-    await scanFolders();
-    addLog(`✅ Selesai memuat ${audioFiles.length} lagu ke ${target === 'mandatory' ? 'Lagu Wajib' : 'Lagu Random'}.`);
+      if (uploadedFolder) {
+        if (target === 'mandatory') {
+          mandatoryFolderInput.value = uploadedFolder;
+        } else {
+          randomFolderInput.value = uploadedFolder;
+        }
+      }
+
+      await scanFolders();
+      addLog(`✅ Selesai memuat ${audioFiles.length} lagu ke ${target === 'mandatory' ? 'Lagu Wajib' : 'Lagu Random'}.`);
+    } catch (err) {
+      console.error("handleBrowserFilesSelected error:", err);
+      addLog(`❌ Gagal memproses file audio: ${err.message}`);
+    }
   }
 
   // =========================================================================
@@ -338,12 +468,35 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       mandatoryModeBlock.style.display = 'none';
     }
+
+    syncSongsPerOutputLimits();
+  }
+
+  function syncSongsPerOutputLimits() {
+    const mandatoryMode = document.querySelector('input[name="mandatoryMode"]:checked')?.value || 'all';
+    const nMandatory = scannedData.mandatory_count || 0;
+
+    if (mandatoryMode === 'all' && nMandatory > 0) {
+      const minRequired = nMandatory + 1;
+      songsPerOutputRange.min = minRequired;
+      if (parseInt(songsPerOutputRange.max, 10) < minRequired + 10) {
+        songsPerOutputRange.max = Math.max(30, minRequired + 10);
+      }
+      if (parseInt(songsPerOutputRange.value, 10) < minRequired) {
+        songsPerOutputRange.value = minRequired;
+        songsPerOutputVal.textContent = `${minRequired} Lagu`;
+      }
+    } else {
+      songsPerOutputRange.min = 2;
+    }
   }
 
   // =========================================================================
   // Combinatorics Calculation
   // =========================================================================
   async function calculateCombinations() {
+    syncSongsPerOutputLimits();
+
     const positionMode = document.querySelector('input[name="positionMode"]:checked')?.value || 'random';
     const mandatoryMode = document.querySelector('input[name="mandatoryMode"]:checked')?.value || 'all';
     const songsPerOutput = parseInt(songsPerOutputRange.value, 10);
@@ -410,7 +563,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.querySelectorAll('input[name="mandatoryMode"]').forEach(el => {
-    el.addEventListener('change', calculateCombinations);
+    el.addEventListener('change', () => {
+      syncSongsPerOutputLimits();
+      calculateCombinations();
+    });
   });
 
   // =========================================================================
@@ -433,6 +589,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const songsPerOutput = parseInt(songsPerOutputRange.value, 10);
     const batchCount = parseInt(batchCountRange.value, 10);
     const crossfadeSec = parseFloat(crossfadeRange.value);
+
+    const nMandatory = scannedData.mandatory_count || 0;
+    if (mandatoryMode === 'all' && nMandatory > 0 && songsPerOutput < nMandatory) {
+      alert(`⚠️ Konfigurasi Tidak Valid:\n\nJumlah lagu per output (${songsPerOutput}) lebih sedikit dari jumlah lagu wajib (${nMandatory}).\n\nSaran Solusi:\n1. Pilih opsi "Ambil 1 Bergilir" (jika ingin 1 file output berisi ${songsPerOutput} lagu campuran),\n   ATAU\n2. Geser slider "Jumlah Lagu per Output" minimal ke ${nMandatory + 1} lagu (jika ingin semua ${nMandatory} lagu wajib masuk ke setiap file).`);
+      return;
+    }
     
     let targetBitrate = 320;
     if (audioQualitySelect.value === 'auto') {
@@ -457,6 +619,12 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       startMergeBtn.disabled = true;
       startMergeBtn.innerHTML = `<span>Sedang Memproses...</span>`;
+      cancelMergeBtn.classList.remove('hidden');
+      cancelMergeBtn.disabled = false;
+      cancelMergeBtn.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+        <span>Batal</span>
+      `;
       progressContainer.classList.remove('hidden');
       isMerging = true;
 
@@ -479,6 +647,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  cancelMergeBtn.addEventListener('click', async () => {
+    if (!isMerging) return;
+    cancelMergeBtn.disabled = true;
+    cancelMergeBtn.innerHTML = `
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+      <span>Membatalkan...</span>
+    `;
+    addLog("⚠️ Mengirim sinyal pembatalan proses penggabungan...");
+    try {
+      await fetch('/api/cancel-merge', { method: 'POST' });
+    } catch (e) {
+      console.error("Cancel merge error:", e);
+    }
+  });
+
   function startStatusPolling() {
     if (statusPollInterval) clearInterval(statusPollInterval);
 
@@ -493,16 +676,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (state.is_running) {
           progressStatusText.textContent = `Memproses file ${state.current_index} dari ${state.total_files}...`;
+          if (state.cancel_requested) {
+            progressStatusText.textContent = "🛑 Menghentikan proses atas permintaan pengguna...";
+          }
           if (state.current_track_info) {
             currentTrackPipeline.textContent = state.current_track_info;
           }
         } else {
           if (state.error) {
-            progressStatusText.textContent = `❌ Terjadi kesalahan: ${state.error}`;
+            if (state.error.includes("dibatalkan") || state.cancel_requested) {
+              progressStatusText.textContent = `🛑 Penggabungan dibatalkan.`;
+            } else {
+              progressStatusText.textContent = `❌ Terjadi kesalahan: ${state.error}`;
+            }
             resetMergeUI();
           } else if (state.completed_files && state.completed_files.length > 0) {
             progressStatusText.textContent = `✨ Selesai! Semua ${state.total_files} file berhasil digabungkan.`;
             currentTrackPipeline.textContent = "Semua file telah siap di folder output.";
+            resetMergeUI();
+          } else {
             resetMergeUI();
           }
         }
@@ -533,6 +725,12 @@ document.addEventListener('DOMContentLoaded', () => {
     startMergeBtn.innerHTML = `
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
       <span>Mulai Proses Merge (Batch)</span>
+    `;
+    cancelMergeBtn.classList.add('hidden');
+    cancelMergeBtn.disabled = false;
+    cancelMergeBtn.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+      <span>Batal</span>
     `;
   }
 
