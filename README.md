@@ -9,17 +9,18 @@
 
 <p align="center">
   <strong>Intelligent Audio Combinatorics & Batch Randomizer Engine</strong><br>
-  <em>Versi 2.1.0 — Ditenagai oleh Python, FFmpeg 8.1, Native Microsoft WebView2, dan Modern Dark Glassmorphism UI.</em>
+  <em>Versi 2.2.0 — Ditenagai oleh Python, FFmpeg 8.1, Native Microsoft WebView2, dan Modern Dark Glassmorphism 3-Column Studio UI.</em>
 </p>
 
 <p align="center">
-  <a href="https://github.com/maxnmrantau/Smart-MP3-Batch-Merger/releases/tag/v2.1.0"><img src="https://img.shields.io/badge/Download-v2.1.0%20Portable%20EXE-00f2fe?style=for-the-badge&logo=windows" alt="Download EXE"></a>
+  <a href="https://github.com/maxnmrantau/Smart-MP3-Batch-Merger/releases/tag/v2.2.0"><img src="https://img.shields.io/badge/Download-v2.2.0%20Portable%20EXE-00f2fe?style=for-the-badge&logo=windows" alt="Download EXE"></a>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.1.0-00f2fe.svg" alt="Version 2.1.0">
+  <img src="https://img.shields.io/badge/Version-2.2.0-00f2fe.svg" alt="Version 2.2.0">
   <img src="https://img.shields.io/badge/GUI-Native%20WebView2-10b981.svg" alt="Native WebView2">
-  <img src="https://img.shields.io/badge/License-MIT-a855f7.svg" alt="License MIT">
+  <img src="https://img.shields.io/badge/Layout-3--Column%20Zero--Scroll-a855f7.svg" alt="3-Column Studio Layout">
+  <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License MIT">
   <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-blue.svg" alt="Windows 10/11">
   <img src="https://img.shields.io/badge/RAM%20Usage-~50MB-green.svg" alt="RAM Safe">
 </p>
@@ -49,56 +50,61 @@ Aplikasi ini mengotomatiskan seluruh proses tersebut hanya dalam **sekali klik**
 
 ## 📖 Cara Menggunakan Aplikasi (Step-by-Step Guide)
 
-Aplikasi dirancang sangat intuitif dengan 4 langkah mudah:
+Aplikasi dirancang sangat intuitif dengan arsitektur **3-Column Pro Studio Dashboard**:
 
 ```
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐     ┌──────────────────┐
-│ 1. Input Lagu   │ ──> │ 2. Aturan Wajib  │ ──> │ 3. Komposisi    │ ──> │ 4. Output & Run  │
-│ (Wajib & Pool)  │     │ (Intro/Outro/Mix)│     │ (Panjang & Fade)│     │ (Start Merge)    │
-└─────────────────┘     └──────────────────┘     └─────────────────┘     └──────────────────┘
+┌─────────────────────────┐    ┌──────────────────────────┐    ┌─────────────────────────┐
+│  KOLOM 1: INPUT FOLDER  │    │   KOLOM 2: PENGATURAN    │    │  KOLOM 3: LIVE STUDIO   │
+│  - Folder Lagu Wajib    │ ──>│  - Aturan & Posisi Wajib │ ──>│  - Live Combinatorics   │
+│  - Folder Pool Acak     │    │  - Target Lagu (Dinamis) │    │  - Start Merge & Batal  │
+│  - Folder Output        │    │  - Kalkulator Durasi Riil│    │  - Player & Explorer    │
+└─────────────────────────┘    └──────────────────────────┘    └─────────────────────────┘
 ```
 
-### Langkah 1: Input Lagu Wajib & Lagu Random
+### Kolom 1: Input Lagu Wajib, Pool Acak, & Folder Output
 * **Lagu Wajib (Mandatory):** Lagu yang **pasti masuk** ke dalam setiap file hasil gabungan (contoh: Lagu Utama, Jingle Identitas, atau Lagu Pembuka).
   * Klik tombol **"Pilih Folder Wajib"** untuk memilih folder lagu utama Anda.
 * **Pool Lagu Random (Acak):** Kumpulan seluruh lagu yang akan diacak untuk mengisi sisa durasi file audio.
   * Klik tombol **"Pilih Folder Pool"** untuk memilih folder koleksi lagu acak Anda.
-* *Metode Alternatif:* Anda juga bisa mengklik *"Pilih File Lagu"* untuk memilih beberapa file MP3 sekaligus, atau cukup tarik (*Drag & Drop*) file MP3 langsung ke dalam kotak.
+* *Metode Alternatif:* Anda juga bisa mengklik *"Pilih File Lagu"* untuk memilih file audio tunggal secara langsung, atau cukup tarik (*Drag & Drop*) file ke dalam kotak.
+* **Folder Output:** Tentukan folder tujuan penyimpanan file hasil gabungan.
 
 ---
 
-### Langkah 2: Mengatur Aturan & Posisi Lagu Wajib
-Pilih bagaimana Lagu Wajib akan ditempatkan di dalam setiap file output:
-* **Di Awal (Intro):** Lagu wajib selalu diletakkan pada urutan pertama (#1) di setiap file MP3.
-* **Di Akhir (Outro):** Lagu wajib selalu diletakkan pada urutan lagu paling terakhir.
-* **Posisi Acak:** Lagu wajib dipastikan selalu ada di dalam file, namun posisinya diacak secara alami di antara lagu-lagu lain.
-* **Mode Jika Lagu Wajib > 1 File:**
-  * *Semua Wajib Masuk:* Seluruh lagu wajib akan dimasukkan ke dalam setiap file output.
-  * *Ambil 1 Bergilir (Rotasi):* Mengambil 1 lagu wajib secara bergantian pada setiap file output (File 1 = Lagu A, File 2 = Lagu B, dst).
+### Kolom 2: Mengatur Aturan, Durasi Cerdas, & Komposisi
+Pilih bagaimana Lagu Wajib dan lagu acak akan disusun:
+1. **Posisi Lagu Wajib:**
+   * *Di Awal (Intro):* Lagu wajib selalu diletakkan pada urutan pertama (#1).
+   * *Di Akhir (Outro):* Lagu wajib diletakkan pada urutan lagu paling terakhir.
+   * *Posisi Acak:* Lagu wajib selalu masuk, namun posisinya diacak alami di antara lagu lain.
+2. **Mode Jika Lagu Wajib > 1 File:**
+   * *Semua Wajib Masuk:* Seluruh lagu wajib akan dimasukkan ke dalam setiap file output.
+   * *Ambil 1 Bergilir (Rotasi):* Mengambil 1 lagu wajib bergantian pada setiap file output.
+3. **Panjang Lagu per Output (Kapasitas Slider Dinamis):**
+   * Bebas menentukan jumlah lagu (bisa 30, 56, hingga 100+ lagu mengikuti jumlah lagu di pool).
+   * Tersedia **kotak input angka presisi** di samping slider untuk mengetik angka target secara langsung.
+4. **⏱️ Kalkulator Durasi Riil & Jaminan 1 Jam+ (Safety Badge):**
+   * Menghitung durasi riil dari metadata setiap file (`ffprobe`).
+   * Menampilkan estimasi durasi rata-rata serta **Rentang Acak (Min – Max)** untuk mengantisipasi skenario lagu pendek vs lagu panjang.
+   * **Badge Jaminan 1 Jam+:** Memberi kepastian apakah kombinasi dijamin &ge; 1 Jam, mepet target, atau di bawah 1 jam (lengkap dengan saran jumlah lagu tambahan).
+5. **Target Jumlah File Batch, Crossfade, & Kualitas Audio:**
+   * Tentukan jumlah batch file MP3 unik yang dibuat.
+   * Atur transisi *Crossfade* (0.0 – 5.0 detik) dan Bitrate (`Auto`, `320k`, `256k`, `192k`).
 
 ---
 
-### Langkah 3: Mengatur Komposisi, Target Batch, & Kualitas
-Gunakan slider interaktif untuk menyesuaikan hasil:
-1. **Panjang Lagu per Output:** Tentukan berapa total lagu dalam 1 file MP3 gabungan (contoh: 5 lagu = 1 Lagu Wajib + 4 Lagu Random).
-2. **Target Jumlah File Output (Batch):** Tentukan berapa banyak file MP3 unik yang ingin Anda buat (contoh: 10 buah file MP3).
-3. **Efek Transisi (Crossfade):**
-   * `0.0 Detik`: Menggabungkan secara instan (*blazing fast concatenation*).
-   * `1.0 – 5.0 Detik`: Memberikan efek fade-in/fade-out halus antar lagu.
-4. **Kualitas Audio (Bitrate):**
-   * *Auto - Match Source Quality (Disarankan):* Memindai bitrate lagu sumber dan mempertahankan kejernihan suara aslinya.
-   * Pilihan manual: `320 kbps`, `256 kbps`, atau `192 kbps`.
-
----
-
-### Langkah 4: Menentukan Folder Penyimpanan & Memulai Merge
-1. Pada bagian **"3. Folder Penyimpanan Hasil"**, klik **"Pilih Folder Output"** dan pilih folder tempat Anda ingin menyimpan file MP3 hasil gabungan.
-2. Klik tombol hijau besar **"Mulai Proses Merge (Batch)"**.
-3. Pantau proses secara *live* melalui **Progress Bar**, daftar urutan lagu yang sedang diproses, dan log konsol streaming.
-4. Setelah selesai:
-   * Putar langsung hasil file MP3 di pemutar audio bawaan (*built-in preview player*).
-   * Klik tombol **"Buka Folder Hasil"** untuk langsung membuka foldernya di Windows Explorer.
-   * Buka file `playlist_summary.txt` di folder output untuk melihat laporan lengkap urutan lagu di setiap file.
+### Kolom 3: Live Combinatorics Inspector & Eksekusi Merge
+1. **🧮 Live Combinatorics Inspector:**
+   * Menghitung total variasi kombinasi unik secara *real-time*.
+   * Diformat ringkas dengan satuan resmi (Juta, Miliar, Triliun) dan notasi eksponensial superskrip matematis ($\sim 4,66 \times 10^{45}$) untuk angka astronomis.
+   * Arahkan kursor untuk melihat angka lengkap, atau klik tombol **`🔍 Klik Detail / Salin`** untuk *toggle* angka utuh dan menyalin ke clipboard.
+2. **Mulai Proses Merge (Batch):**
+   * Klik tombol hijau besar **"Mulai Proses Merge (Batch)"**.
+   * Pantau proses secara *live* melalui **Progress Bar**, daftar lagu yang sedang dirender, dan log streaming.
+   * Tombol **"Batal"** tersedia kapan saja untuk membatalkan proses dengan aman.
+3. **Hasil & Audio Player:**
+   * Putar langsung file MP3 hasil gabungan di pemutar audio bawaan (*built-in preview player*).
+   * Klik **"Buka Folder Hasil"** untuk langsung menuju Windows Explorer.
 
 ---
 
@@ -108,32 +114,46 @@ Aplikasi dilengkapi mesin kalkulator kombinatorika yang menghitung variasi unik 
 
 $$\text{Variasi Unik} = P(n, k) = \frac{n!}{(n - k)!}$$
 
-* **Contoh Nyata:** Jika Anda memiliki **1 Lagu Wajib** dan **10 Lagu Random**, lalu ingin membuat file output berisi **5 Lagu**, sistem dapat menghasilkan hingga **25.200 variasi file MP3 yang berbeda**.
-* **Proteksi Anti-Duplikasi:** Setiap urutan lagu diverifikasi menggunakan *cryptographic hashing (MD5/SHA-256)* untuk menjamin **tidak akan pernah ada 2 file MP3 dengan susunan lagu yang sama persis** dalam satu batch.
+* **Contoh Nyata:** Jika Anda memiliki **2 Lagu Wajib** dan **56 Lagu Random**, lalu membuat file gabungan berisi **28 Lagu**, sistem dapat menghasilkan hingga $\mathbf{\sim 4,66 \times 10^{45}}$ variasi unik (secara praktis tak terbatas).
+* **Proteksi Anti-Duplikasi:** Setiap urutan lagu diverifikasi menggunakan *cryptographic hashing* untuk menjamin **tidak akan pernah ada 2 file MP3 dengan susunan lagu yang sama persis** dalam satu batch.
 
 ---
 
-## 🌟 Apa yang Baru di Versi 2.1.0? (New in v2.1.0)
+## 🌟 Apa yang Baru di Versi 2.2.0? (New in v2.2.0)
 
-1. ⚡ **Anti-Stuck FFmpeg Render Engine**:
-   * Menghilangkan *pipe buffer deadlock* Windows yang sebelumnya membuat proses render macet di 0%. Proses batch merge kini berjalan dengan kecepatan 100% penuh.
-2. 🎚️ **Universal Audio Resampling**:
-   * Mendukung pencampuran otomatis berbagai format file (`.wav`, `.mp3`, `.m4a`, `.flac`, dll.) dan resolusi sample rate berbeda tanpa error konfigurasi.
-3. 🎵 **Dukungan Input 1 Lagu Langsung (Single File)**:
-   * Mesin pemindai kini mengenali file audio tunggal langsung. Tombol *"Pilih File Lagu"* memanggil dialog file native Windows (`-topmost`) yang instan.
-4. 🪟 **Dialog Windows Explorer Instan & Selalu Terdepan**:
-   * Dialog pemilihan folder dan file kini selalu muncul di baris paling depan (di atas aplikasi) secara instan tanpa membuat UI membeku (*freeze*).
-5. 🛑 **Tombol Batal Real-Time (`Batal`)**:
-   * Memungkinkan pengguna membatalkan proses batch merging kapan saja secara aman tanpa file korup.
-6. 🧠 **Smart UI Auto-Adjust & Validasi Cerdas**:
-   * Slider jumlah lagu otomatis menyesuaikan batas minimalnya secara dinamis saat mode *"Semua Wajib Masuk"* dipilih.
+1. **🎛️ Tata Letak Pro Studio 3-Kolom Fullscreen (Zero-Scroll & No Empty Margins)**:
+   * Tata letak dirombak menjadi 3 kolom terorganisir penuh (*Step 1: Input*, *Step 2: Settings & Duration*, *Step 3: Inspector, Run & Player*).
+   * Mengisi penuh layar (`100vh`) tanpa ruang kosong dan tanpa scroll di resolusi desktop/laptop standar.
+2. **🔓 Penghapusan Batas 20 Lagu (Kapasitas Slider Dinamis)**:
+   * Slider target lagu kini terbuka dinamis sesuai total lagu di pool (30, 40, 56, 100+ lagu).
+3. **⏱️ Kalkulator Durasi Riil & Prediksi Rentang Acak (Min – Max)**:
+   * Durasi dihitung langsung dari durasi eksak setiap lagu (`ffprobe`), bukan asumsi statis 3,5 menit.
+   * Menampilkan rentang acak min-max untuk memprediksi durasi file saat terambil lagu-lagu pendek maupun panjang.
+4. **🛡️ Indikator Jaminan Target 1 Jam (Safety Margin Badge)**:
+   * Badge pintar yang memastikan apakah file dipastikan $\ge$ 1 Jam, mepet target, atau butuh lagu tambahan.
+5. **⌨️ Input Angka Presisi Langsung (Direct Numeric Input)**:
+   * Input teks angka di samping slider lagu dan batch untuk pengetikan angka target instan.
+6. **🔢 Formatter Notasi Kompak Kalkulator Kombinatorika Unik**:
+   * Angka astronomis puluhan digit diformat elegan dengan superskrip matematis ($\sim 4,66 \times 10^{45}$) serta tooltip, tombol *toggle* detail, dan otomatis salin ke clipboard dengan notifikasi toast.
+
+---
+
+## 🌟 Riwayat Versi Sebelumnya (Previous Releases)
+
+### Versi 2.1.0:
+* **⚡ Anti-Stuck FFmpeg Render Engine**: Menghilangkan *pipe buffer deadlock* Windows yang sebelumnya membuat proses render macet di 0%.
+* **🎚️ Universal Audio Resampling**: Mendukung pencampuran otomatis berbagai format file (`.wav`, `.mp3`, `.m4a`, dll.) tanpa error konfigurasi.
+* **🎵 Input 1 Lagu Langsung (Single File)**: Pengenalan file audio tunggal langsung tanpa folder.
+* **🪟 Dialog Windows Explorer Instan & Selalu Terdepan**: Dialog pemilihan folder `-topmost` non-blocking.
+* **🛑 Tombol Batal Real-Time**: Pembatalan proses batch merge aman kapan saja.
+* **🧠 Smart UI Auto-Adjust**: Slider otomatis menyesuaikan batas minimal saat mode *"Semua Wajib Masuk"* aktif.
 
 ---
 
 ## 🚀 Cara Menjalankan (Getting Started)
 
 ### 1. Menggunakan File Portable EXE (Siap Pakai - Disarankan):
-Unduh file **`Smart_MP3_Merger.exe`** dari halaman [GitHub Releases](https://github.com/maxnmrantau/Smart-MP3-Batch-Merger/releases/tag/v2.1.0) lalu klik ganda untuk menjalankannya. Tidak memerlukan instalasi Python apa pun.
+Unduh file **`Smart_MP3_Merger.exe`** dari halaman [GitHub Releases v2.2.0](https://github.com/maxnmrantau/Smart-MP3-Batch-Merger/releases/tag/v2.2.0) lalu klik ganda untuk menjalankannya. Tidak memerlukan instalasi Python apa pun.
 
 ### 2. Menjalankan dari Source Code (Python):
 ```bash
