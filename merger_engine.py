@@ -191,6 +191,100 @@ def scan_audio_folder(folder_path: str) -> List[Dict[str, Any]]:
     return audio_files
 
 
+def format_combinatorics_display(n: int) -> Dict[str, Any]:
+    """
+    Formats combinatorics numbers into elegant, compact human-readable strings
+    (e.g., 25.200, 14,2 Juta, 3,8 Miliar, 45 Triliun, or ~4,66 × 10⁴⁵ for astronomical scales),
+    while preserving the exact integer representation for tooltips and copy actions.
+    """
+    if not isinstance(n, int) or n <= 0:
+        return {
+            "short": "0",
+            "exact": "0",
+            "is_astronomical": False,
+            "unit": "Variasi"
+        }
+
+    exact_str = f"{n:,}".replace(",", ".")
+
+    # Under 1 Million: exact dot-separated number (e.g. 25.200)
+    if n < 1_000_000:
+        return {
+            "short": exact_str,
+            "exact": exact_str,
+            "is_astronomical": False,
+            "unit": "Variasi"
+        }
+    # 1 Million to 1 Billion: Juta
+    elif n < 1_000_000_000:
+        val = n / 1_000_000
+        val_str = f"{val:.2f}".rstrip("0").rstrip(".").replace(".", ",")
+        return {
+            "short": f"{val_str} Juta",
+            "exact": exact_str,
+            "is_astronomical": False,
+            "unit": "Variasi"
+        }
+    # 1 Billion to 1 Trillion: Miliar
+    elif n < 1_000_000_000_000:
+        val = n / 1_000_000_000
+        val_str = f"{val:.2f}".rstrip("0").rstrip(".").replace(".", ",")
+        return {
+            "short": f"{val_str} Miliar",
+            "exact": exact_str,
+            "is_astronomical": False,
+            "unit": "Variasi"
+        }
+    # 1 Trillion to 1 Quadrillion: Triliun
+    elif n < 1_000_000_000_000_000:
+        val = n / 1_000_000_000_000
+        val_str = f"{val:.2f}".rstrip("0").rstrip(".").replace(".", ",")
+        return {
+            "short": f"{val_str} Triliun",
+            "exact": exact_str,
+            "is_astronomical": False,
+            "unit": "Variasi"
+        }
+    # 1 Quadrillion to 1 Quintillion: Kuadriliun
+    elif n < 1_000_000_000_000_000_000:
+        val = n / 1_000_000_000_000_000
+        val_str = f"{val:.2f}".rstrip("0").rstrip(".").replace(".", ",")
+        return {
+            "short": f"{val_str} Kuadriliun",
+            "exact": exact_str,
+            "is_astronomical": False,
+            "unit": "Variasi"
+        }
+    else:
+        # Astronomical scales (>= 10^18): Scientific notation with unicode superscripts
+        # e.g. ~4,66 × 10⁴⁵
+        s = str(n)
+        exp = len(s) - 1
+        leading_digits = s[:5] if len(s) >= 5 else s
+        raw_mantissa = float(leading_digits) / (10 ** (len(leading_digits) - 1))
+        mantissa_rounded = round(raw_mantissa, 2)
+        if mantissa_rounded >= 10.0:
+            mantissa_rounded = 1.0
+            exp += 1
+        mantissa_str = f"{mantissa_rounded:.2f}".rstrip("0").rstrip(".").replace(".", ",")
+        if mantissa_str == "":
+            mantissa_str = "1"
+
+        superscripts = {
+            '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+            '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹'
+        }
+        exp_str = "".join(superscripts.get(c, c) for c in str(exp))
+        short_val = f"~{mantissa_str} × 10{exp_str}"
+
+        return {
+            "short": short_val,
+            "exact": exact_str,
+            "is_astronomical": True,
+            "unit": "Variasi (Tak Terbatas)"
+        }
+
+
 def calculate_combinations(
     n_mandatory: int,
     n_random: int,
@@ -199,18 +293,25 @@ def calculate_combinations(
     mandatory_mode: str = "all"     # "all", "one"
 ) -> Dict[str, Any]:
     """
-    Calculates the exact number of possible unique output combinations/permutations.
+    Calculates the exact number of possible unique output combinations/permutations,
+    returning both the exact mathematical integer and cleanly formatted strings.
     """
     if n_mandatory <= 0:
         return {
             "valid": False,
             "total_variations": 0,
+            "total_variations_formatted": "0",
+            "total_variations_exact": "0",
+            "is_astronomical": False,
             "message": "Tidak ada lagu wajib yang terdeteksi."
         }
     if n_random <= 0:
         return {
             "valid": False,
             "total_variations": 0,
+            "total_variations_formatted": "0",
+            "total_variations_exact": "0",
+            "is_astronomical": False,
             "message": "Tidak ada lagu di folder acak (random pool)."
         }
         
@@ -220,6 +321,9 @@ def calculate_combinations(
             return {
                 "valid": False,
                 "total_variations": 0,
+                "total_variations_formatted": "0",
+                "total_variations_exact": "0",
+                "is_astronomical": False,
                 "message": f"Jumlah lagu per output ({songs_per_output}) lebih sedikit dari jumlah lagu wajib ({req_mandatory})."
             }
         req_random = songs_per_output - req_mandatory
@@ -227,6 +331,9 @@ def calculate_combinations(
             return {
                 "valid": False,
                 "total_variations": 0,
+                "total_variations_formatted": "0",
+                "total_variations_exact": "0",
+                "is_astronomical": False,
                 "message": f"Dibutuhkan {req_random} lagu acak per file, tetapi di pool hanya ada {n_random} lagu."
             }
             
@@ -235,20 +342,27 @@ def calculate_combinations(
         
         if position_mode in ("start", "end"):
             total_variations = mandatory_perms * random_perms
-            formula_desc = f"P({n_random}, {req_random}) × {req_mandatory}! = {total_variations:,}"
+            fmt = format_combinatorics_display(total_variations)
+            res_str = f"≈ {fmt['short']} (Tak Terbatas)" if fmt["is_astronomical"] else (f"≈ {fmt['short']}" if total_variations >= 1_000_000_000 else f"= {fmt['exact']}")
+            formula_desc = f"P({n_random}, {req_random}) × {req_mandatory}! {res_str}"
         elif position_mode == "random":
             slot_combinations = math.comb(songs_per_output, req_mandatory)
             total_variations = slot_combinations * mandatory_perms * random_perms
-            formula_desc = f"C({songs_per_output}, {req_mandatory}) × {req_mandatory}! × P({n_random}, {req_random}) = {total_variations:,}"
+            fmt = format_combinatorics_display(total_variations)
+            res_str = f"≈ {fmt['short']} (Tak Terbatas)" if fmt["is_astronomical"] else (f"≈ {fmt['short']}" if total_variations >= 1_000_000_000 else f"= {fmt['exact']}")
+            formula_desc = f"C({songs_per_output}, {req_mandatory}) × {req_mandatory}! × P({n_random}, {req_random}) {res_str}"
             
         return {
             "valid": True,
             "total_variations": total_variations,
+            "total_variations_formatted": fmt["short"],
+            "total_variations_exact": fmt["exact"],
+            "is_astronomical": fmt["is_astronomical"],
             "mandatory_per_mix": req_mandatory,
             "random_per_mix": req_random,
             "total_songs_per_mix": songs_per_output,
             "formula_desc": formula_desc,
-            "message": f"Dapat menghasilkan hingga {total_variations:,} variasi file MP3 unik."
+            "message": f"Dapat menghasilkan hingga {fmt['short']} variasi file MP3 unik."
         }
         
     elif mandatory_mode == "one":
@@ -257,6 +371,9 @@ def calculate_combinations(
             return {
                 "valid": False,
                 "total_variations": 0,
+                "total_variations_formatted": "0",
+                "total_variations_exact": "0",
+                "is_astronomical": False,
                 "message": "Jumlah lagu per output minimal 1."
             }
         req_random = songs_per_output - 1
@@ -264,6 +381,9 @@ def calculate_combinations(
             return {
                 "valid": False,
                 "total_variations": 0,
+                "total_variations_formatted": "0",
+                "total_variations_exact": "0",
+                "is_astronomical": False,
                 "message": f"Dibutuhkan {req_random} lagu acak per file, tetapi di pool hanya ada {n_random} lagu."
             }
             
@@ -272,19 +392,26 @@ def calculate_combinations(
         
         if position_mode in ("start", "end"):
             total_variations = mandatory_choices * random_perms
-            formula_desc = f"{n_mandatory} × P({n_random}, {req_random}) = {total_variations:,}"
+            fmt = format_combinatorics_display(total_variations)
+            res_str = f"≈ {fmt['short']} (Tak Terbatas)" if fmt["is_astronomical"] else (f"≈ {fmt['short']}" if total_variations >= 1_000_000_000 else f"= {fmt['exact']}")
+            formula_desc = f"{n_mandatory} × P({n_random}, {req_random}) {res_str}"
         elif position_mode == "random":
             total_variations = songs_per_output * mandatory_choices * random_perms
-            formula_desc = f"{songs_per_output} (slot) × {n_mandatory} × P({n_random}, {req_random}) = {total_variations:,}"
+            fmt = format_combinatorics_display(total_variations)
+            res_str = f"≈ {fmt['short']} (Tak Terbatas)" if fmt["is_astronomical"] else (f"≈ {fmt['short']}" if total_variations >= 1_000_000_000 else f"= {fmt['exact']}")
+            formula_desc = f"{songs_per_output} (slot) × {n_mandatory} × P({n_random}, {req_random}) {res_str}"
             
         return {
             "valid": True,
             "total_variations": total_variations,
+            "total_variations_formatted": fmt["short"],
+            "total_variations_exact": fmt["exact"],
+            "is_astronomical": fmt["is_astronomical"],
             "mandatory_per_mix": 1,
             "random_per_mix": req_random,
             "total_songs_per_mix": songs_per_output,
             "formula_desc": formula_desc,
-            "message": f"Dapat menghasilkan hingga {total_variations:,} variasi file MP3 unik."
+            "message": f"Dapat menghasilkan hingga {fmt['short']} variasi file MP3 unik."
         }
 
 

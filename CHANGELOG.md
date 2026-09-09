@@ -4,6 +4,39 @@ Semua pembaruan dan perubahan pada proyek **Smart MP3 Batch Merger** akan dicata
 
 ---
 
+## [v2.2.0] - 2026-09-09
+
+### 🚀 Fitur Baru & Peningkatan Durasi Cerdas:
+
+#### 1. 🔓 Penghapusan Batas 20 Lagu (Kapasitas Slider Dinamis)
+- Slider **"Jumlah Lagu per Output File"** kini terbuka secara dinamis mengikuti total lagu yang tersedia di pool (bisa 30, 40, 56, hingga 100+ lagu).
+- Pengguna tidak lagi terkunci pada batas maksimal 20 lagu.
+
+#### 2. ⏱️ Kalkulator Durasi Riil & Prediksi Rentang Acak (Min – Max)
+- Menghapus asumsi statis 3,5 menit per lagu.
+- Durasi kini dihitung langsung dari **metadata durasi nyata setiap lagu** hasil inspeksi `ffprobe`.
+- Menampilkan **Rentang Acak (Min – Max)**: memprediksi durasi terendah (skenario lagu-lagu pendek terpilih) hingga durasi tertinggi (skenario lagu-lagu panjang terpilih).
+
+#### 3. 🛡️ Indikator Jaminan Target 1 Jam (Safety Margin Badge)
+- Badge status pintar yang memberi kepastian langsung apakah variasi acak yang dibuat sudah **100% dijamin &ge; 1 Jam**, mepet target, atau di bawah 1 jam, lengkap dengan saran jumlah lagu tambahan yang diperlukan.
+
+#### 4. ⌨️ Input Angka Langsung (Direct Numeric Input)
+- Menambahkan kotak input angka presisi di samping slider lagu dan batch, memungkinkan pengguna mengetik angka target secara langsung (misal ketik `33` atau `35`) tanpa harus menggeser slider mouse.
+
+#### 5. 🧮 Live Inspector Durasi Pool & File Output
+- Menambahkan metrik baru pada kartu Live Inspector di panel kanan: **Rata-rata Durasi Lagu Pool** dan **Estimasi Durasi per File Output**.
+
+#### 6. 🎛️ Tata Letak Pro Studio 3-Kolom Fullscreen (Zero-Scroll & No Empty Margins)
+- Mengubah arsitektur antarmuka menjadi 3 kolom terorganisir penuh (*Step 1: Input & Folder*, *Step 2: Pengaturan & Durasi*, *Step 3: Inspector, Eksekusi & Hasil*).
+- Menghilangkan ruang kosong samping dan bawah layar dengan layout fleksibel `100vh`, sehingga semua kontrol penting terlihat rapi tanpa perlu scroll di layar laptop/desktop.
+
+#### 7. 🔢 Formatter Notasi Kompak Kalkulator Kombinatorika Unik
+- Mengatasi angka kemungkinan unik astronomis (hingga puluhan digit) agar tidak meluber keluar dari kartu.
+- Menampilkan format ringkas dengan satuan resmi (Juta, Miliar, Triliun) serta notasi eksponensial matematis dengan superskrip (misal `~4,66 × 10⁴⁵`).
+- Menyediakan tooltip angka utuh saat kursor diarahkan, tombol interaktif `🔍 Klik Detail / Salin` untuk toggle tampilan angka presisi, dan fitur otomatis salin ke clipboard dengan notifikasi toast melayang.
+
+---
+
 ## [v2.1.0] - 2026-09-03
 
 ### 🚀 Pembaruan & Peningkatan (Stability & Performance Release):

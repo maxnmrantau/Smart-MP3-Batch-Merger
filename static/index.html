@@ -22,7 +22,7 @@
         <div>
           <div class="title-with-badge">
             <h1 class="app-title">Smart MP3 Batch Merger</h1>
-            <span class="app-version-badge">v2.1.0</span>
+            <span class="app-version-badge">v2.2.0</span>
           </div>
           <p class="app-subtitle">Audio Combinatorics & Intelligent Randomizer Engine</p>
         </div>
@@ -37,8 +37,8 @@
     </header>
 
     <div class="main-layout">
-      <!-- Left / Top Column: 3-Folder Setup & Settings -->
-      <div class="config-column">
+      <!-- Column 1: Input Sumber Lagu (Step 1) -->
+      <div class="layout-column column-source">
         <!-- 1. Folder Management Card -->
         <section class="card glass-card">
           <div class="card-header">
@@ -147,7 +147,10 @@
             </div>
           </div>
         </section>
+      </div>
 
+      <!-- Column 2: Pengaturan & Durasi Cerdas (Step 2) -->
+      <div class="layout-column column-settings">
         <!-- 2. Merging & Arrangement Settings -->
         <section class="card glass-card">
           <div class="card-header">
@@ -206,16 +209,37 @@
             <div class="setting-block slider-block">
               <div class="slider-header">
                 <label for="songsPerOutputRange">Jumlah Lagu per Output File</label>
-                <span class="slider-value-badge" id="songsPerOutputVal">5 Lagu</span>
+                <div class="slider-val-box">
+                  <input type="number" id="songsPerOutputNum" class="slider-val-input" min="2" max="100" value="5" title="Ketik angka langsung atau geser slider" />
+                  <span class="slider-val-unit">Lagu</span>
+                  <span class="slider-value-badge" id="songsPerOutputVal" style="display:none;">5 Lagu</span>
+                </div>
               </div>
-              <input type="range" id="songsPerOutputRange" min="2" max="20" value="5" step="1" />
-              <div class="slider-hint" id="songsCompositionHint">Panjang 1 File MP3 = 1 Lagu Wajib + 4 Lagu Random (Durasi ~15-20 Menit)</div>
+              <input type="range" id="songsPerOutputRange" min="2" max="100" value="5" step="1" />
+              <div class="slider-hint" id="songsCompositionHint">Panjang 1 File MP3 = 1 Lagu Wajib + 4 Lagu Random</div>
+              
+              <!-- Smart Duration Info Card -->
+              <div class="duration-estimate-box" id="durationEstimateBox">
+                <div class="dur-est-main">
+                  <span class="dur-est-label">Estimasi Durasi per File:</span>
+                  <strong class="dur-est-val" id="durationEstVal">~15-20 Menit</strong>
+                </div>
+                <div class="dur-est-range" id="durationRangeVal">Rentang Acak: Menunggu scan lagu...</div>
+                <div class="dur-safety-badge safety-info" id="durationSafetyBadge">
+                  <span class="dur-status-icon" id="durationStatusIcon">ℹ️</span>
+                  <span class="dur-status-text" id="durationStatusText">Pilih folder lagu untuk melihat kalkulasi durasi riil &amp; rentang 1 jam.</span>
+                </div>
+              </div>
             </div>
 
             <div class="setting-block slider-block">
               <div class="slider-header">
                 <label for="batchCountRange">Target Jumlah File Output (Batch)</label>
-                <span class="slider-value-badge" id="batchCountVal">5 File</span>
+                <div class="slider-val-box">
+                  <input type="number" id="batchCountNum" class="slider-val-input" min="1" max="500" value="5" title="Ketik angka langsung atau geser slider" />
+                  <span class="slider-val-unit">File</span>
+                  <span class="slider-value-badge" id="batchCountVal" style="display:none;">5 File</span>
+                </div>
               </div>
               <input type="range" id="batchCountRange" min="1" max="100" value="5" step="1" />
               <div class="slider-hint" id="batchHint">Total File MP3 yang Dibuat = 5 Buah File MP3 Berbeda</div>
@@ -244,16 +268,19 @@
         </section>
       </div>
 
-      <!-- Right Column: Live Inspector & Action Panel -->
-      <div class="action-column">
+      <!-- Column 3: Live Inspector, Kontrol & Hasil (Step 3) -->
+      <div class="layout-column column-actions">
         <!-- Live Combinatorics & Audio Inspector Card -->
         <section class="card glass-card highlight-card">
           <div class="inspector-badge">🧮 Live Combinatorics Inspector</div>
           <div class="inspector-metric-box">
-            <span class="metric-label">Kemungkinan Maksimal File Unik:</span>
+            <div class="metric-top-bar">
+              <span class="metric-label">Kemungkinan Maksimal File Unik:</span>
+              <span class="metric-hint" id="metricToggleHint" title="Klik angka untuk beralih antara format ringkas dan angka lengkap serta menyalin">🔍 Klik Detail / Salin</span>
+            </div>
             <div class="metric-value-wrapper">
-              <span class="metric-value" id="totalVariationsDisplay">--</span>
-              <span class="metric-unit">Variasi</span>
+              <span class="metric-value" id="totalVariationsDisplay" title="Arahkan kursor atau klik untuk melihat angka lengkap / salin">--</span>
+              <span class="metric-unit" id="totalVariationsUnit">Variasi</span>
             </div>
             <div class="metric-formula" id="formulaDescDisplay">Silakan masukkan folder / file lagu untuk menghitung variasi</div>
           </div>
@@ -266,6 +293,14 @@
             <div class="inspector-mini-stat">
               <span class="mini-label">Lagu Wajib</span>
               <strong class="mini-val" id="inspectorMandatoryCount">0 Lagu</strong>
+            </div>
+            <div class="inspector-mini-stat">
+              <span class="mini-label">Rata-rata Lagu Pool</span>
+              <strong class="mini-val text-yellow" id="inspectorAvgSongDur">--</strong>
+            </div>
+            <div class="inspector-mini-stat">
+              <span class="mini-label">Estimasi Durasi / File</span>
+              <strong class="mini-val text-cyan" id="inspectorEstOutputDur">--</strong>
             </div>
             <div class="inspector-mini-stat">
               <span class="mini-label">Kualitas Terdeteksi</span>

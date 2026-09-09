@@ -65,9 +65,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // Settings & Sliders
   const songsPerOutputRange = document.getElementById('songsPerOutputRange');
   const songsPerOutputVal = document.getElementById('songsPerOutputVal');
+  const songsPerOutputNum = document.getElementById('songsPerOutputNum');
   const songsCompositionHint = document.getElementById('songsCompositionHint');
+  const durationEstVal = document.getElementById('durationEstVal');
+  const durationRangeVal = document.getElementById('durationRangeVal');
+  const durationSafetyBadge = document.getElementById('durationSafetyBadge');
+  const durationStatusIcon = document.getElementById('durationStatusIcon');
+  const durationStatusText = document.getElementById('durationStatusText');
   const batchCountRange = document.getElementById('batchCountRange');
   const batchCountVal = document.getElementById('batchCountVal');
+  const batchCountNum = document.getElementById('batchCountNum');
   const batchHint = document.getElementById('batchHint');
   const crossfadeRange = document.getElementById('crossfadeRange');
   const crossfadeVal = document.getElementById('crossfadeVal');
@@ -77,9 +84,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // Inspector Card
   const totalVariationsDisplay = document.getElementById('totalVariationsDisplay');
   const formulaDescDisplay = document.getElementById('formulaDescDisplay');
+  const metricToggleHint = document.getElementById('metricToggleHint');
   const inspectorRandomCount = document.getElementById('inspectorRandomCount');
   const inspectorMandatoryCount = document.getElementById('inspectorMandatoryCount');
   const inspectorBitrate = document.getElementById('inspectorBitrate');
+  const inspectorAvgSongDur = document.getElementById('inspectorAvgSongDur');
+  const inspectorEstOutputDur = document.getElementById('inspectorEstOutputDur');
 
   // Progress & Logs
   const progressContainer = document.getElementById('progressContainer');
@@ -472,48 +482,351 @@ document.addEventListener('DOMContentLoaded', () => {
     syncSongsPerOutputLimits();
   }
 
+  // =========================================================================
+  // Duration & Friendly Format Helpers
+  // =========================================================================
+  function formatFriendlyDuration(seconds) {
+    if (isNaN(seconds) || seconds <= 0) return "0 Menit";
+    const totalSec = Math.round(seconds);
+    const hours = Math.floor(totalSec / 3600);
+    const minutes = Math.round((totalSec % 3600) / 60);
+
+    if (hours > 0) {
+      if (minutes >= 60) {
+        return `${hours + 1} Jam`;
+      }
+      if (minutes === 0) {
+        return `${hours} Jam`;
+      }
+      return `${hours} Jam ${minutes} Menit`;
+    }
+    return `${Math.max(1, minutes)} Menit`;
+  }
+
+  function calculateDurationEstimates(songsPerOutput, mandatoryMode, crossfadeSec = 0) {
+    const nMandatory = scannedData.mandatory_count || 0;
+    const nRandom = scannedData.random_count || 0;
+
+    const mandatoryTracks = scannedData.mandatory_tracks || [];
+    const randomTracks = scannedData.random_tracks || [];
+
+    const usedMandatory = (mandatoryMode === 'all') ? nMandatory : (nMandatory > 0 ? 1 : 0);
+    const usedRandom = Math.max(0, songsPerOutput - usedMandatory);
+
+    // If no tracks scanned yet, return fallback based on default 3.0 mins (180s)
+    if (mandatoryTracks.length === 0 && randomTracks.length === 0) {
+      const avgSong = 180;
+      const est = songsPerOutput * avgSong;
+      return {
+        hasData: false,
+        avgDur: est,
+        minDur: est * 0.85,
+        maxDur: est * 1.15,
+        avgSongDur: avgSong,
+        suggestedFor1Hour: Math.ceil(3600 / avgSong),
+        minSongsForGuaranteed1Hour: Math.ceil(3600 / (avgSong * 0.85))
+      };
+    }
+
+    // Extract valid durations (> 0)
+    const mandDurs = mandatoryTracks.map(t => Number(t.duration) || 0).filter(d => d > 0);
+    const randDurs = randomTracks.map(t => Number(t.duration) || 0).filter(d => d > 0).sort((a, b) => a - b);
+
+    const defaultDur = 180;
+    const avgMandatorySingle = mandDurs.length > 0
+      ? mandDurs.reduce((a, b) => a + b, 0) / mandDurs.length
+      : defaultDur;
+    const avgRandomSingle = randDurs.length > 0
+      ? randDurs.reduce((a, b) => a + b, 0) / randDurs.length
+      : defaultDur;
+
+    // 1. Mandatory Duration Contribution
+    let mandAvg = 0;
+    let mandMin = 0;
+    let mandMax = 0;
+
+    if (mandatoryMode === 'all') {
+      const totalMand = mandDurs.reduce((a, b) => a + b, 0);
+      mandAvg = totalMand;
+      mandMin = totalMand;
+      mandMax = totalMand;
+    } else {
+      if (mandDurs.length > 0) {
+        mandAvg = avgMandatorySingle;
+        mandMin = Math.min(...mandDurs);
+        mandMax = Math.max(...mandDurs);
+      } else {
+        mandAvg = defaultDur;
+        mandMin = defaultDur;
+        mandMax = defaultDur;
+      }
+    }
+
+    // 2. Random Duration Contribution
+    let randAvg = 0;
+    let randMin = 0;
+    let randMax = 0;
+
+    if (usedRandom > 0) {
+      if (randDurs.length >= usedRandom) {
+        randMin = randDurs.slice(0, usedRandom).reduce((a, b) => a + b, 0);
+        randMax = randDurs.slice(-usedRandom).reduce((a, b) => a + b, 0);
+        randAvg = usedRandom * avgRandomSingle;
+      } else if (randDurs.length > 0) {
+        randMin = usedRandom * Math.min(...randDurs);
+        randMax = usedRandom * Math.max(...randDurs);
+        randAvg = usedRandom * avgRandomSingle;
+      } else {
+        randMin = usedRandom * defaultDur * 0.85;
+        randMax = usedRandom * defaultDur * 1.15;
+        randAvg = usedRandom * defaultDur;
+      }
+    }
+
+    // Deduct crossfade overlap if > 0
+    const transitionCount = Math.max(0, songsPerOutput - 1);
+    const overlapDeduction = transitionCount * crossfadeSec;
+
+    const totalAvg = Math.max(0, mandAvg + randAvg - overlapDeduction);
+    const totalMin = Math.max(0, mandMin + randMin - overlapDeduction);
+    const totalMax = Math.max(0, mandMax + randMax - overlapDeduction);
+
+    // Calculate pool-wide average track duration
+    const allDurs = [...mandDurs, ...randDurs];
+    const overallAvg = allDurs.length > 0 ? (allDurs.reduce((a, b) => a + b, 0) / allDurs.length) : defaultDur;
+
+    // How many songs needed on average to reach 1 hour (3600s)?
+    const neededFor1Hour = Math.max(2, Math.ceil(3600 / overallAvg));
+
+    // How many songs needed in worst-case (shortest songs) to guarantee 1 hour?
+    let guaranteedSongs1Hour = neededFor1Hour;
+    if (randDurs.length > 0) {
+      let accumMin = (mandatoryMode === 'all') ? mandMin : (mandDurs.length > 0 ? Math.min(...mandDurs) : 0);
+      let k = (mandatoryMode === 'all') ? nMandatory : (nMandatory > 0 ? 1 : 0);
+      let randIdx = 0;
+      while (randIdx < randDurs.length && accumMin - Math.max(0, k - 1) * crossfadeSec < 3600) {
+        accumMin += randDurs[randIdx];
+        k++;
+        randIdx++;
+      }
+      guaranteedSongs1Hour = Math.max(neededFor1Hour, k);
+    }
+
+    return {
+      hasData: true,
+      avgDur: totalAvg,
+      minDur: totalMin,
+      maxDur: totalMax,
+      avgSongDur: overallAvg,
+      suggestedFor1Hour: neededFor1Hour,
+      minSongsForGuaranteed1Hour: guaranteedSongs1Hour
+    };
+  }
+
   function syncSongsPerOutputLimits() {
     const mandatoryMode = document.querySelector('input[name="mandatoryMode"]:checked')?.value || 'all';
     const nMandatory = scannedData.mandatory_count || 0;
+    const nRandom = scannedData.random_count || 0;
 
-    if (mandatoryMode === 'all' && nMandatory > 0) {
-      const minRequired = nMandatory + 1;
-      songsPerOutputRange.min = minRequired;
-      if (parseInt(songsPerOutputRange.max, 10) < minRequired + 10) {
-        songsPerOutputRange.max = Math.max(30, minRequired + 10);
+    let minRequired = 2;
+    let maxAllowed = 100; // default initial max when no files loaded
+
+    if (nMandatory > 0 || nRandom > 0) {
+      if (mandatoryMode === 'all') {
+        minRequired = Math.max(2, nMandatory + (nRandom > 0 ? 1 : 0));
+        maxAllowed = nMandatory + nRandom;
+      } else {
+        // mandatoryMode === 'one'
+        minRequired = (nMandatory > 0 && nRandom > 0) ? 2 : 1;
+        maxAllowed = (nMandatory > 0 ? 1 : 0) + nRandom;
       }
-      if (parseInt(songsPerOutputRange.value, 10) < minRequired) {
-        songsPerOutputRange.value = minRequired;
-        songsPerOutputVal.textContent = `${minRequired} Lagu`;
-      }
-    } else {
-      songsPerOutputRange.min = 2;
+      maxAllowed = Math.max(minRequired, maxAllowed);
     }
+
+    songsPerOutputRange.min = minRequired;
+    songsPerOutputRange.max = maxAllowed;
+
+    if (songsPerOutputNum) {
+      songsPerOutputNum.min = minRequired;
+      songsPerOutputNum.max = maxAllowed;
+    }
+
+    let currentVal = parseInt(songsPerOutputRange.value, 10);
+    if (isNaN(currentVal) || currentVal < minRequired) {
+      currentVal = minRequired;
+      songsPerOutputRange.value = currentVal;
+    } else if (currentVal > maxAllowed) {
+      currentVal = maxAllowed;
+      songsPerOutputRange.value = currentVal;
+    }
+
+    if (songsPerOutputNum) songsPerOutputNum.value = currentVal;
+    if (songsPerOutputVal) songsPerOutputVal.textContent = `${currentVal} Lagu`;
   }
 
   // =========================================================================
-  // Combinatorics Calculation
+  // Combinatorics Calculation & Helpers
   // =========================================================================
+  function formatCombinatoricsClient(n) {
+    if (!n || n === 0 || n === '0') return "0";
+    const s = String(n).trim();
+    if (s.length <= 6) return Number(s).toLocaleString('id-ID');
+    if (s.length <= 9) {
+      const v = (Number(s) / 1e6).toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
+      return `${v} Juta`;
+    }
+    if (s.length <= 12) {
+      const v = (Number(s) / 1e9).toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
+      return `${v} Miliar`;
+    }
+    if (s.length <= 15) {
+      const v = (Number(s) / 1e12).toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
+      return `${v} Triliun`;
+    }
+    if (s.length <= 18) {
+      const v = (Number(s) / 1e15).toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
+      return `${v} Kuadriliun`;
+    }
+    const exp = s.length - 1;
+    const lead = parseFloat(s.slice(0, 4)) / Math.pow(10, Math.min(3, s.slice(0, 4).length - 1));
+    const leadStr = lead.toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
+    const superscripts = {
+      '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+      '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹'
+    };
+    const expStr = String(exp).split('').map(c => superscripts[c] || c).join('');
+    return `~${leadStr} × 10${expStr}`;
+  }
+
+  function showToast(message, type = 'info') {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toast-container';
+      container.className = 'toast-container';
+      document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `<span>${message}</span>`;
+    container.appendChild(toast);
+
+    setTimeout(() => toast.classList.add('show'), 10);
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => {
+        if (toast.parentElement) toast.parentElement.removeChild(toast);
+      }, 300);
+    }, 3200);
+  }
+
+  function toggleCombinatoricsDisplay() {
+    if (!totalVariationsDisplay) return;
+    const exact = totalVariationsDisplay.dataset.exact;
+    const short = totalVariationsDisplay.dataset.short;
+    if (!exact || exact === '--' || exact === '0') return;
+
+    const currentView = totalVariationsDisplay.dataset.view || "short";
+    if (currentView === "short") {
+      totalVariationsDisplay.textContent = exact;
+      totalVariationsDisplay.dataset.view = "exact";
+      totalVariationsDisplay.classList.add('metric-value-exact');
+      if (metricToggleHint) metricToggleHint.textContent = "🔍 Format Ringkas";
+      totalVariationsDisplay.title = "Format Lengkap Aktif (Klik untuk kembali ke ringkas)";
+    } else {
+      totalVariationsDisplay.textContent = short;
+      totalVariationsDisplay.dataset.view = "short";
+      totalVariationsDisplay.classList.remove('metric-value-exact');
+      if (metricToggleHint) metricToggleHint.textContent = "🔍 Klik Detail / Salin";
+      totalVariationsDisplay.title = `Total Tepat: ${exact} Variasi Unik (Klik untuk salin / toggle format angka lengkap)`;
+    }
+
+    // Copy clean digits to clipboard
+    try {
+      const rawDigits = exact.replace(/\./g, '');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(rawDigits).then(() => {
+          showToast(`✓ Angka kombinasi (${short}) disalin ke clipboard!`, 'info');
+        }).catch(() => {});
+      }
+    } catch (_) {}
+  }
+
   async function calculateCombinations() {
     syncSongsPerOutputLimits();
 
     const positionMode = document.querySelector('input[name="positionMode"]:checked')?.value || 'random';
     const mandatoryMode = document.querySelector('input[name="mandatoryMode"]:checked')?.value || 'all';
     const songsPerOutput = parseInt(songsPerOutputRange.value, 10);
+    const crossfadeSec = parseFloat(crossfadeRange.value) || 0;
 
     const nMandatory = scannedData.mandatory_count;
     const nRandom = scannedData.random_count;
 
-    if (nMandatory === 0 || nRandom === 0) {
-      totalVariationsDisplay.textContent = "--";
-      formulaDescDisplay.textContent = "Pilih file/folder lagu wajib dan random untuk menghitung variasi.";
-      return;
+    // Calculate duration estimates
+    const durInfo = calculateDurationEstimates(songsPerOutput, mandatoryMode, crossfadeSec);
+
+    // Update inspector stats
+    if (inspectorAvgSongDur) {
+      inspectorAvgSongDur.textContent = durInfo.hasData
+        ? `${Math.floor(durInfo.avgSongDur / 60)}m ${Math.round(durInfo.avgSongDur % 60)}s`
+        : "--";
+    }
+    if (inspectorEstOutputDur) {
+      inspectorEstOutputDur.textContent = `~${formatFriendlyDuration(durInfo.avgDur)}`;
     }
 
     // Update composition hint
-    const usedMandatory = (mandatoryMode === 'all') ? nMandatory : 1;
+    const usedMandatory = (mandatoryMode === 'all') ? nMandatory : (nMandatory > 0 ? 1 : 0);
     const usedRandom = Math.max(0, songsPerOutput - usedMandatory);
-    songsCompositionHint.textContent = `Panjang 1 File MP3 = ${usedMandatory} Lagu Wajib + ${usedRandom} Lagu Random (Durasi ~${songsPerOutput * 3.5 | 0} Menit)`;
+    songsCompositionHint.textContent = `Panjang 1 File MP3 = ${usedMandatory} Lagu Wajib + ${usedRandom} Lagu Random (${songsPerOutput} Lagu Total)`;
+
+    // Update duration estimate box
+    if (durationEstVal) {
+      durationEstVal.textContent = `~${formatFriendlyDuration(durInfo.avgDur)}`;
+    }
+    if (durationRangeVal) {
+      durationRangeVal.textContent = durInfo.hasData
+        ? `Rentang Acak: ${formatFriendlyDuration(durInfo.minDur)} s/d ${formatFriendlyDuration(durInfo.maxDur)}`
+        : `Rentang Acak: ~${formatFriendlyDuration(durInfo.minDur)} s/d ~${formatFriendlyDuration(durInfo.maxDur)} (estimasi)`;
+    }
+
+    // Update safety badge
+    if (durationSafetyBadge && durationStatusText) {
+      durationSafetyBadge.className = 'dur-safety-badge';
+      if (!durInfo.hasData) {
+        durationSafetyBadge.classList.add('safety-info');
+        if (durationStatusIcon) durationStatusIcon.textContent = 'ℹ️';
+        durationStatusText.textContent = 'Pilih folder lagu untuk menghitung durasi riil dan rentang 1 jam.';
+      } else if (durInfo.minDur >= 3600) {
+        // Guaranteed >= 1 hour in all random variations
+        durationSafetyBadge.classList.add('safety-green');
+        if (durationStatusIcon) durationStatusIcon.textContent = '✅';
+        durationStatusText.innerHTML = `<strong>DIJAMIN AMAN:</strong> Semua variasi acak dipastikan berdurasi minimal <strong>${formatFriendlyDuration(durInfo.minDur)}</strong> (&ge; 1 Jam)!`;
+      } else if (durInfo.avgDur >= 3600 && durInfo.minDur < 3600) {
+        // Average >= 1 hour, but worst case < 1 hour
+        durationSafetyBadge.classList.add('safety-yellow');
+        if (durationStatusIcon) durationStatusIcon.textContent = '⚠️';
+        const extraNeeded = Math.max(1, durInfo.minSongsForGuaranteed1Hour - songsPerOutput);
+        durationStatusText.innerHTML = `Rata-rata sudah <strong>${formatFriendlyDuration(durInfo.avgDur)}</strong>, namun kemungkinan terendah <strong>${formatFriendlyDuration(durInfo.minDur)}</strong> jika terambil lagu-lagu pendek. (Saran: setel minimal <strong>${durInfo.minSongsForGuaranteed1Hour} lagu</strong> / +${extraNeeded} lagu agar 100% dijamin &ge; 1 Jam).`;
+      } else {
+        // Under 1 hour
+        durationSafetyBadge.classList.add('safety-info');
+        if (durationStatusIcon) durationStatusIcon.textContent = '💡';
+        durationStatusText.innerHTML = `Durasi saat ini di bawah 1 Jam (~<strong>${formatFriendlyDuration(durInfo.avgDur)}</strong>). Disarankan minimal <strong>${durInfo.suggestedFor1Hour}–${durInfo.minSongsForGuaranteed1Hour} lagu</strong> untuk mencapai target 1 Jam.`;
+      }
+    }
+
+    if (nMandatory === 0 || nRandom === 0) {
+      totalVariationsDisplay.textContent = "--";
+      totalVariationsDisplay.dataset.short = "--";
+      totalVariationsDisplay.dataset.exact = "--";
+      totalVariationsDisplay.dataset.view = "short";
+      totalVariationsDisplay.classList.remove('metric-value-exact');
+      if (metricToggleHint) metricToggleHint.textContent = "🔍 Klik Detail / Salin";
+      formulaDescDisplay.textContent = "Pilih file/folder lagu wajib dan random untuk menghitung variasi.";
+      return;
+    }
 
     try {
       const resp = await fetch('/api/calculate', {
@@ -530,10 +843,32 @@ document.addEventListener('DOMContentLoaded', () => {
       const calc = await resp.json();
 
       if (calc.valid) {
-        totalVariationsDisplay.textContent = Number(calc.total_variations).toLocaleString('id-ID');
+        const shortVal = calc.total_variations_formatted || formatCombinatoricsClient(calc.total_variations);
+        const exactVal = calc.total_variations_exact || String(calc.total_variations);
+
+        totalVariationsDisplay.dataset.short = shortVal;
+        totalVariationsDisplay.dataset.exact = exactVal;
+
+        if (totalVariationsDisplay.dataset.view === "exact") {
+          totalVariationsDisplay.textContent = exactVal;
+          totalVariationsDisplay.classList.add('metric-value-exact');
+          if (metricToggleHint) metricToggleHint.textContent = "🔍 Format Ringkas";
+        } else {
+          totalVariationsDisplay.textContent = shortVal;
+          totalVariationsDisplay.classList.remove('metric-value-exact');
+          if (metricToggleHint) metricToggleHint.textContent = "🔍 Klik Detail / Salin";
+        }
+
+        totalVariationsDisplay.title = `Total Tepat: ${exactVal} Variasi Unik (Klik untuk salin / toggle format angka lengkap)`;
         formulaDescDisplay.textContent = `Rumus: ${calc.formula_desc}`;
+        formulaDescDisplay.title = `Total Tepat: ${exactVal} Variasi`;
       } else {
         totalVariationsDisplay.textContent = "0";
+        totalVariationsDisplay.dataset.short = "0";
+        totalVariationsDisplay.dataset.exact = "0";
+        totalVariationsDisplay.dataset.view = "short";
+        totalVariationsDisplay.classList.remove('metric-value-exact');
+        if (metricToggleHint) metricToggleHint.textContent = "🔍 Klik Detail / Salin";
         formulaDescDisplay.textContent = calc.message || "Kombinasi tidak valid.";
       }
     } catch (e) {
@@ -543,19 +878,74 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Settings change events
   songsPerOutputRange.addEventListener('input', (e) => {
-    songsPerOutputVal.textContent = `${e.target.value} Lagu`;
+    if (songsPerOutputNum) songsPerOutputNum.value = e.target.value;
+    if (songsPerOutputVal) songsPerOutputVal.textContent = `${e.target.value} Lagu`;
     calculateCombinations();
   });
 
+  if (songsPerOutputNum) {
+    songsPerOutputNum.addEventListener('input', (e) => {
+      let val = parseInt(e.target.value, 10);
+      if (isNaN(val)) return;
+      const min = parseInt(songsPerOutputRange.min, 10) || 2;
+      const max = parseInt(songsPerOutputRange.max, 10) || 100;
+      val = Math.max(min, Math.min(max, val));
+      songsPerOutputRange.value = val;
+      if (songsPerOutputVal) songsPerOutputVal.textContent = `${val} Lagu`;
+      calculateCombinations();
+    });
+    songsPerOutputNum.addEventListener('change', (e) => {
+      let val = parseInt(e.target.value, 10);
+      const min = parseInt(songsPerOutputRange.min, 10) || 2;
+      const max = parseInt(songsPerOutputRange.max, 10) || 100;
+      if (isNaN(val) || val < min) val = min;
+      if (val > max) val = max;
+      songsPerOutputNum.value = val;
+      songsPerOutputRange.value = val;
+      if (songsPerOutputVal) songsPerOutputVal.textContent = `${val} Lagu`;
+      calculateCombinations();
+    });
+  }
+
   batchCountRange.addEventListener('input', (e) => {
-    batchCountVal.textContent = `${e.target.value} File`;
+    if (batchCountNum) batchCountNum.value = e.target.value;
+    if (batchCountVal) batchCountVal.textContent = `${e.target.value} File`;
     if (batchHint) {
       batchHint.textContent = `Total File MP3 yang Dibuat = ${e.target.value} Buah File MP3 Berbeda`;
     }
   });
 
+  if (batchCountNum) {
+    batchCountNum.addEventListener('input', (e) => {
+      let val = parseInt(e.target.value, 10);
+      if (isNaN(val)) return;
+      const min = parseInt(batchCountRange.min, 10) || 1;
+      const max = parseInt(batchCountRange.max, 10) || 500;
+      val = Math.max(min, Math.min(max, val));
+      batchCountRange.value = val;
+      if (batchCountVal) batchCountVal.textContent = `${val} File`;
+      if (batchHint) {
+        batchHint.textContent = `Total File MP3 yang Dibuat = ${val} Buah File MP3 Berbeda`;
+      }
+    });
+    batchCountNum.addEventListener('change', (e) => {
+      let val = parseInt(e.target.value, 10);
+      const min = parseInt(batchCountRange.min, 10) || 1;
+      const max = parseInt(batchCountRange.max, 10) || 500;
+      if (isNaN(val) || val < min) val = min;
+      if (val > max) val = max;
+      batchCountNum.value = val;
+      batchCountRange.value = val;
+      if (batchCountVal) batchCountVal.textContent = `${val} File`;
+      if (batchHint) {
+        batchHint.textContent = `Total File MP3 yang Dibuat = ${val} Buah File MP3 Berbeda`;
+      }
+    });
+  }
+
   crossfadeRange.addEventListener('input', (e) => {
     crossfadeVal.textContent = `${parseFloat(e.target.value).toFixed(1)} Detik`;
+    calculateCombinations();
   });
 
   document.querySelectorAll('input[name="positionMode"]').forEach(el => {
@@ -568,6 +958,17 @@ document.addEventListener('DOMContentLoaded', () => {
       calculateCombinations();
     });
   });
+
+  // Initial calculation on page load
+  calculateCombinations();
+
+  // Click to toggle compact / exact view and copy to clipboard
+  if (totalVariationsDisplay) {
+    totalVariationsDisplay.addEventListener('click', toggleCombinatoricsDisplay);
+  }
+  if (metricToggleHint) {
+    metricToggleHint.addEventListener('click', toggleCombinatoricsDisplay);
+  }
 
   // =========================================================================
   // Merge Execution & Polling
