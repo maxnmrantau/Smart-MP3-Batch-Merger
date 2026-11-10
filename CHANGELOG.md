@@ -4,6 +4,42 @@ Semua pembaruan dan perubahan pada proyek **Smart MP3 Batch Merger** akan dicata
 
 ---
 
+## [v2.3.0] - 2026-11-10
+
+### 🚀 Fitur Baru & Peningkatan:
+
+#### 1. 🔁 Fitur Putar Ulang (Loop) & Acak Loop (Random Shuffle)
+- Menambahkan opsi **Loop** yang memungkinkan kumpulan lagu diputar berulang untuk mencapai durasi panjang (misal video kompilasi YouTube 1 jam / 2 jam) atau jumlah lagu tertentu dari koleksi pool yang terbatas.
+- **Pilih Jumlah Lagu yang Di-loop:** Pengguna bebas memilih berapa lagu dari pool yang ingin di-loop (misal punya 10 lagu dan ingin me-loop 5 lagu saja, atau seluruh 10 lagu).
+- **Mode Target Durasi vs Jumlah Lagu:** Mendukung penentuan target berdasarkan jumlah lagu (misal 25 lagu) atau target durasi waktu (misal 60 menit, 120 menit).
+- **Acak Loop (Smart Shuffle) vs Berurutan (Sequential):** 
+  - *Acak Loop:* Urutan pengulangan diacak alami dengan proteksi cerdas *anti-consecutive duplicate* (tidak ada lagu yang sama berbunyi berturut-turut).
+  - *Berurutan:* Lagu diulang secara teratur mengikuti urutan siklus aslinya.
+
+#### 2. 🔘 Sakelar ON / OFF Lagu Wajib (Mandatory Toggle)
+- Menambahkan switch toggle ON/OFF untuk fitur Lagu Wajib.
+- Ketika di-set **OFF**, pengguna dapat melakukan penggabungan dan pengacakan audio murni dari Pool Acak tanpa memerlukan file lagu wajib atau lagu pembuka.
+- Area input folder Lagu Wajib dan opsi posisi wajib otomatis dinonaktifkan secara elegan ketika fitur ini dimatikan.
+- Ketika di-set **ON**, Lagu Wajib berfungsi normal seperti sebelumnya.
+
+#### 3. ⏱️ Generator Timestamps Format YouTube & Format Biasa
+- **Format Timestamps YouTube:** Secara otomatis menghitung waktu mulai (*start timestamp*) setiap lagu dalam format `00:00 Judul Lagu` atau `00:00:00` (untuk durasi $\ge 1$ jam) dengan memperhitungkan efek transisi *crossfade*.
+- **Tombol Sekali Klik Salin YouTube ("📋 Salin YT"):** Tersedia pada setiap item daftar file hasil, memungkinkan pengguna langsung menyalin timestamps siap tempel ke kolom deskripsi YouTube.
+- **Modal Timestamps Interaktif ("👁️ Timestamps"):** Menampilkan pratinjau tab untuk format YouTube dan format detail biasa lengkap dengan tombol salin.
+- **File Ekspor Otomatis di Folder Output:**
+  - `youtube_timestamps.txt`: Berisi timestamps siap copy-paste ke YouTube untuk setiap file hasil dalam batch.
+  - `playlist_summary.txt`: Laporan komprehensif mencakup ringkasan batch, format YouTube, dan rincian slot biasa.
+- **Pilihan Preferensi Format:** Tersedia dropdown pengaturan di Kolom 2 untuk memilih format laporan yang diinginkan.
+
+#### 4. 🎨 Pembaruan & Penataan Tata Letak (UI Layout Polish)
+- **Penghapusan Kalkulator Durasi Redundan:** Menghapus kotak kalkulator estimasi durasi redundan di Kolom 2 agar tata letak pengaturan jauh lebih ringkas, leluasa, dan bebas distorsi.
+- **Pencegahan Elemen Terpotong (Zero Boundary Overflow):**
+  - Mengaktifkan `overflow-y: auto` dengan slim custom scrollbar pada kartu Kolom 2, memastikan seluruh menu (termasuk *Format Laporan Timestamps & Summary*) dapat diakses secara utuh di semua resolusi layar.
+  - Menyelaraskan jarak flexbox menjadi `gap: 10px` teratur dan konsisten.
+- **Executable Standalone Siap Pakai:** Mengompilasi ulang [`Smart_MP3_Merger.exe`](file:///d:/CODING/AI%20STUDIO/Mp3%20Merger/Smart_MP3_Merger.exe) (110.0 MB).
+
+---
+
 ## [v2.2.0] - 2026-09-09
 
 ### 🚀 Fitur Baru & Peningkatan Durasi Cerdas:

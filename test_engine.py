@@ -37,6 +37,35 @@ def test_combinatorics():
     assert res4["total_variations"] == 75600, f"Expected 75600, got {res4['total_variations']}"
     print("  [OK] 3 Mandatory + 10 Random (5 Songs, One Mandatory per mix, Random Slot): 75,600 variations verified.")
 
+    # Case 5: Mandatory OFF, 10 random, 5 songs per mix
+    # P(10, 5) = 10 * 9 * 8 * 7 * 6 = 30,240
+    res5 = merger_engine.calculate_combinations(0, 10, 5, mandatory_enabled=False)
+    assert res5["valid"] is True, "Mandatory OFF calculation failed"
+    assert res5["total_variations"] == 30240, f"Expected 30240, got {res5['total_variations']}"
+    print("  [OK] Mandatory OFF (10 Random, 5 Songs per mix): 30,240 variations verified.")
+
+    # Case 6: Loop Mode (Loop 5 songs from 10 random pool to create 15-song playlist with Acak Loop)
+    res6 = merger_engine.calculate_combinations(0, 10, 15, mandatory_enabled=False, loop_enabled=True, loop_pool_count=5, loop_order="random")
+    assert res6["valid"] is True, "Loop calculation failed"
+    assert res6["total_variations"] > 0, "Expected positive variations"
+    print(f"  [OK] Loop & Acak Loop (Pool 10, Subset 5, 15 Songs): {res6['total_variations_formatted']} variations verified.")
+
+    # Case 7: Timestamps Generation Test (YouTube & Standard)
+    sample_pl = [
+        {"filename": "01. Intro Jingle.mp3", "duration": 180.0, "is_mandatory": True},
+        {"filename": "02. Lo-Fi Chill Beat.mp3", "duration": 210.0, "is_mandatory": False},
+        {"filename": "03. Rain Ambience.mp3", "duration": 240.0, "is_mandatory": False}
+    ]
+    ts_list = merger_engine.generate_youtube_timestamps(sample_pl, crossfade_sec=2.0)
+    assert len(ts_list) == 3
+    assert ts_list[0]["timestamp"] == "00:00"
+    assert ts_list[0]["title"] == "01. Intro Jingle"
+    assert ts_list[1]["timestamp"] == "02:58" # 180 - 2 = 178s = 02:58
+    assert ts_list[2]["timestamp"] == "06:26" # 178 + 210 - 2 = 386s = 06:26
+    yt_text = merger_engine.format_timestamps_text(ts_list, "youtube")
+    assert "00:00 01. Intro Jingle" in yt_text
+    print("  [OK] YouTube & Standard Timestamps calculation verified.")
+
 
 def generate_synthetic_audio(path: str, freq: int, duration_sec: int = 2):
     """Generates a synthetic sine wave MP3 using FFmpeg."""
@@ -110,6 +139,48 @@ def test_audio_merging_pipeline():
         assert os.path.exists(test_out_mp3), "Merged MP3 file not found on disk"
         assert res_info["duration"] >= 5.5, f"Expected ~6s duration, got {res_info['duration']}"
         print(f"  [OK] FFmpeg merged 3 tracks into '{os.path.basename(test_out_mp3)}' successfully! Duration: {res_info['duration_formatted']}, Bitrate: {res_info['bitrate']}k")
+
+        # Test Case: Batch Playlist without mandatory track (Mandatory OFF)
+        playlists_no_mand = merger_engine.generate_batch_playlists(
+            mandatory_tracks=[],
+            random_tracks=r_scanned,
+            songs_per_output=4,
+            batch_count=2,
+            mandatory_enabled=False
+        )
+        assert len(playlists_no_mand) == 2
+        assert len(playlists_no_mand[0]) == 4
+        assert not any(t.get("is_mandatory") for t in playlists_no_mand[0])
+        print("  [OK] Batch Playlists generated with Mandatory OFF (100% pool songs).")
+
+        # Test Case: Batch Playlist with Loop & Acak Loop (Loop 3 tracks from 5 pool to 8 slots)
+        playlists_loop = merger_engine.generate_batch_playlists(
+            mandatory_tracks=[],
+            random_tracks=r_scanned,
+            songs_per_output=8,
+            batch_count=2,
+            mandatory_enabled=False,
+            loop_enabled=True,
+            loop_pool_count=3,
+            loop_order="random"
+        )
+        assert len(playlists_loop) == 2
+        assert len(playlists_loop[0]) == 8
+        unique_in_mix = len(set(t["path"] for t in playlists_loop[0]))
+        assert unique_in_mix == 3, f"Expected 3 unique tracks looped, got {unique_in_mix}"
+        print(f"  [OK] Looping & Acak Loop generated playlist with {len(playlists_loop[0])} songs from {unique_in_mix} unique subset.")
+
+        # Test Case: Render looped audio mix
+        test_out_loop = os.path.join(out_dir, "Test_Merged_Loop.mp3")
+        res_loop_info = merger_engine.merge_playlist_to_mp3(
+            playlist=playlists_loop[0],
+            output_filepath=test_out_loop,
+            target_bitrate=320,
+            target_sample_rate=44100
+        )
+        assert os.path.exists(test_out_loop)
+        assert res_loop_info["duration"] >= 15.0, f"Expected ~16s, got {res_loop_info['duration']}"
+        print(f"  [OK] FFmpeg merged looped playlist into '{os.path.basename(test_out_loop)}' successfully! Duration: {res_loop_info['duration_formatted']}")
         
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)

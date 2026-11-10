@@ -153,13 +153,89 @@ def get_ffprobe_info(file_path: str) -> Dict[str, Any]:
 
 def format_duration(seconds: float) -> str:
     """Formats seconds into MM:SS or HH:MM:SS."""
-    sec = int(seconds)
+    sec = int(round(seconds))
     hours = sec // 3600
     minutes = (sec % 3600) // 60
     secs = sec % 60
     if hours > 0:
         return f"{hours:02d}:{minutes:02d}:{secs:02d}"
     return f"{minutes:02d}:{secs:02d}"
+
+
+def format_timestamp(seconds: float, is_long_format: bool = False) -> str:
+    """
+    Formats seconds into YouTube-compliant chapter timestamp.
+    Starts at 00:00 (or 00:00:00 if is_long_format or hours > 0).
+    """
+    total_sec = max(0, int(round(seconds)))
+    hours = total_sec // 3600
+    minutes = (total_sec % 3600) // 60
+    secs = total_sec % 60
+    if hours > 0 or is_long_format:
+        return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+    return f"{minutes:02d}:{secs:02d}"
+
+
+def clean_track_title(filename: str) -> str:
+    """Removes file extension and cleans up filename for YouTube timestamps."""
+    return Path(filename).stem
+
+
+def generate_youtube_timestamps(
+    playlist: List[Dict[str, Any]],
+    crossfade_sec: float = 0.0
+) -> List[Dict[str, Any]]:
+    """Calculates chronological timestamps taking crossfade into account."""
+    timestamps = []
+    current_sec = 0.0
+
+    total_dur = 0.0
+    for i, t in enumerate(playlist):
+        d = float(t.get("duration", 0.0))
+        if i == 0:
+            total_dur += d
+        else:
+            total_dur += max(0.0, d - crossfade_sec)
+    is_long = total_dur >= 3600.0
+
+    for idx, track in enumerate(playlist, start=1):
+        clean_title = clean_track_title(track.get("filename", f"Track {idx}"))
+        ts_str = format_timestamp(current_sec, is_long_format=is_long)
+        track_dur = float(track.get("duration", 0.0))
+
+        timestamps.append({
+            "slot": idx,
+            "filename": track.get("filename", ""),
+            "title": clean_title,
+            "start_sec": round(current_sec, 2),
+            "timestamp": ts_str,
+            "duration": track_dur,
+            "duration_formatted": track.get("duration_formatted", format_duration(track_dur)),
+            "is_mandatory": bool(track.get("is_mandatory", False))
+        })
+
+        current_sec = max(0.0, current_sec + track_dur - crossfade_sec)
+
+    return timestamps
+
+
+def format_timestamps_text(
+    timestamps: List[Dict[str, Any]],
+    format_type: str = "youtube"
+) -> str:
+    """Generates ready-to-copy timestamp text."""
+    if format_type == "youtube":
+        return "\n".join(f"{t['timestamp']} {t['title']}" for t in timestamps)
+    elif format_type == "standard":
+        lines = []
+        for t in timestamps:
+            role = "[WAJIB]" if t.get("is_mandatory") else "[RANDOM]"
+            lines.append(f"Slot #{t['slot']:02d} ({t['timestamp']}) {role}: {t['filename']} ({t['duration_formatted']})")
+        return "\n".join(lines)
+    else:  # "both"
+        yt_part = "\n".join(f"{t['timestamp']} {t['title']}" for t in timestamps)
+        std_part = "\n".join(f"Slot #{t['slot']:02d} ({t['timestamp']}) {'[WAJIB]' if t.get('is_mandatory') else '[RANDOM]'}: {t['filename']} ({t['duration_formatted']})" for t in timestamps)
+        return f"--- TIMESTAMPS YOUTUBE (SIAP COPY KE DESKRIPSI) ---\n{yt_part}\n\n--- DETAIL SLOT BIASA ---\n{std_part}"
 
 
 def scan_audio_folder(folder_path: str) -> List[Dict[str, Any]]:
@@ -289,22 +365,19 @@ def calculate_combinations(
     n_mandatory: int,
     n_random: int,
     songs_per_output: int,
-    position_mode: str = "random", # "start", "end", "random"
-    mandatory_mode: str = "all"     # "all", "one"
+    position_mode: str = "random",  # "start", "end", "random"
+    mandatory_mode: str = "all",      # "all", "one"
+    mandatory_enabled: bool = True,
+    loop_enabled: bool = False,
+    loop_target_type: str = "count",
+    loop_pool_count: int = 0,
+    loop_order: str = "random"
 ) -> Dict[str, Any]:
     """
     Calculates the exact number of possible unique output combinations/permutations,
     returning both the exact mathematical integer and cleanly formatted strings.
+    Supports Mandatory Track ON/OFF and Looping/Random Loop modes.
     """
-    if n_mandatory <= 0:
-        return {
-            "valid": False,
-            "total_variations": 0,
-            "total_variations_formatted": "0",
-            "total_variations_exact": "0",
-            "is_astronomical": False,
-            "message": "Tidak ada lagu wajib yang terdeteksi."
-        }
     if n_random <= 0:
         return {
             "valid": False,
@@ -314,44 +387,207 @@ def calculate_combinations(
             "is_astronomical": False,
             "message": "Tidak ada lagu di folder acak (random pool)."
         }
-        
-    if mandatory_mode == "all":
-        req_mandatory = n_mandatory
-        if songs_per_output < req_mandatory:
+
+    if mandatory_enabled:
+        if n_mandatory <= 0:
             return {
                 "valid": False,
                 "total_variations": 0,
                 "total_variations_formatted": "0",
                 "total_variations_exact": "0",
                 "is_astronomical": False,
-                "message": f"Jumlah lagu per output ({songs_per_output}) lebih sedikit dari jumlah lagu wajib ({req_mandatory})."
+                "message": "Lagu wajib diaktifkan, namun tidak ada file lagu wajib yang terdeteksi."
             }
-        req_random = songs_per_output - req_mandatory
-        if req_random > n_random:
+    else:
+        n_mandatory = 0
+
+    if not loop_enabled:
+        if mandatory_enabled:
+            if mandatory_mode == "all":
+                req_mandatory = n_mandatory
+                if songs_per_output < req_mandatory:
+                    return {
+                        "valid": False,
+                        "total_variations": 0,
+                        "total_variations_formatted": "0",
+                        "total_variations_exact": "0",
+                        "is_astronomical": False,
+                        "message": f"Jumlah lagu per output ({songs_per_output}) lebih sedikit dari jumlah lagu wajib ({req_mandatory})."
+                    }
+                req_random = songs_per_output - req_mandatory
+                if req_random > n_random:
+                    return {
+                        "valid": False,
+                        "total_variations": 0,
+                        "total_variations_formatted": "0",
+                        "total_variations_exact": "0",
+                        "is_astronomical": False,
+                        "message": f"Dibutuhkan {req_random} lagu acak per file, tetapi di pool hanya ada {n_random} lagu."
+                    }
+
+                random_perms = math.perm(n_random, req_random) if req_random > 0 else 1
+                mandatory_perms = math.factorial(req_mandatory)
+
+                if position_mode in ("start", "end"):
+                    total_variations = mandatory_perms * random_perms
+                    fmt = format_combinatorics_display(total_variations)
+                    res_str = f"≈ {fmt['short']} (Tak Terbatas)" if fmt["is_astronomical"] else (f"≈ {fmt['short']}" if total_variations >= 1_000_000_000 else f"= {fmt['exact']}")
+                    formula_desc = f"P({n_random}, {req_random}) × {req_mandatory}! {res_str}"
+                elif position_mode == "random":
+                    slot_combinations = math.comb(songs_per_output, req_mandatory)
+                    total_variations = slot_combinations * mandatory_perms * random_perms
+                    fmt = format_combinatorics_display(total_variations)
+                    res_str = f"≈ {fmt['short']} (Tak Terbatas)" if fmt["is_astronomical"] else (f"≈ {fmt['short']}" if total_variations >= 1_000_000_000 else f"= {fmt['exact']}")
+                    formula_desc = f"C({songs_per_output}, {req_mandatory}) × {req_mandatory}! × P({n_random}, {req_random}) {res_str}"
+
+                return {
+                    "valid": True,
+                    "total_variations": total_variations,
+                    "total_variations_formatted": fmt["short"],
+                    "total_variations_exact": fmt["exact"],
+                    "is_astronomical": fmt["is_astronomical"],
+                    "mandatory_per_mix": req_mandatory,
+                    "random_per_mix": req_random,
+                    "total_songs_per_mix": songs_per_output,
+                    "formula_desc": formula_desc,
+                    "message": f"Dapat menghasilkan hingga {fmt['short']} variasi file MP3 unik."
+                }
+
+            elif mandatory_mode == "one":
+                req_mandatory = 1
+                if songs_per_output < 1:
+                    return {
+                        "valid": False,
+                        "total_variations": 0,
+                        "total_variations_formatted": "0",
+                        "total_variations_exact": "0",
+                        "is_astronomical": False,
+                        "message": "Jumlah lagu per output minimal 1."
+                    }
+                req_random = songs_per_output - 1
+                if req_random > n_random:
+                    return {
+                        "valid": False,
+                        "total_variations": 0,
+                        "total_variations_formatted": "0",
+                        "total_variations_exact": "0",
+                        "is_astronomical": False,
+                        "message": f"Dibutuhkan {req_random} lagu acak per file, tetapi di pool hanya ada {n_random} lagu."
+                    }
+
+                mandatory_choices = n_mandatory
+                random_perms = math.perm(n_random, req_random) if req_random > 0 else 1
+
+                if position_mode in ("start", "end"):
+                    total_variations = mandatory_choices * random_perms
+                    fmt = format_combinatorics_display(total_variations)
+                    res_str = f"≈ {fmt['short']} (Tak Terbatas)" if fmt["is_astronomical"] else (f"≈ {fmt['short']}" if total_variations >= 1_000_000_000 else f"= {fmt['exact']}")
+                    formula_desc = f"{n_mandatory} × P({n_random}, {req_random}) {res_str}"
+                elif position_mode == "random":
+                    total_variations = songs_per_output * mandatory_choices * random_perms
+                    fmt = format_combinatorics_display(total_variations)
+                    res_str = f"≈ {fmt['short']} (Tak Terbatas)" if fmt["is_astronomical"] else (f"≈ {fmt['short']}" if total_variations >= 1_000_000_000 else f"= {fmt['exact']}")
+                    formula_desc = f"{songs_per_output} (slot) × {n_mandatory} × P({n_random}, {req_random}) {res_str}"
+
+                return {
+                    "valid": True,
+                    "total_variations": total_variations,
+                    "total_variations_formatted": fmt["short"],
+                    "total_variations_exact": fmt["exact"],
+                    "is_astronomical": fmt["is_astronomical"],
+                    "mandatory_per_mix": 1,
+                    "random_per_mix": req_random,
+                    "total_songs_per_mix": songs_per_output,
+                    "formula_desc": formula_desc,
+                    "message": f"Dapat menghasilkan hingga {fmt['short']} variasi file MP3 unik."
+                }
+        else:
+            # Mandatory is OFF, Loop is OFF
+            req_mandatory = 0
+            req_random = songs_per_output
+            if req_random < 1:
+                return {
+                    "valid": False,
+                    "total_variations": 0,
+                    "total_variations_formatted": "0",
+                    "total_variations_exact": "0",
+                    "is_astronomical": False,
+                    "message": "Jumlah lagu per output minimal 1."
+                }
+            if req_random > n_random:
+                return {
+                    "valid": False,
+                    "total_variations": 0,
+                    "total_variations_formatted": "0",
+                    "total_variations_exact": "0",
+                    "is_astronomical": False,
+                    "message": f"Dibutuhkan {req_random} lagu acak per file, tetapi di pool hanya ada {n_random} lagu."
+                }
+
+            total_variations = math.perm(n_random, req_random)
+            fmt = format_combinatorics_display(total_variations)
+            res_str = f"≈ {fmt['short']} (Tak Terbatas)" if fmt["is_astronomical"] else (f"≈ {fmt['short']}" if total_variations >= 1_000_000_000 else f"= {fmt['exact']}")
+            formula_desc = f"P({n_random}, {req_random}) {res_str}"
+
             return {
-                "valid": False,
-                "total_variations": 0,
-                "total_variations_formatted": "0",
-                "total_variations_exact": "0",
-                "is_astronomical": False,
-                "message": f"Dibutuhkan {req_random} lagu acak per file, tetapi di pool hanya ada {n_random} lagu."
+                "valid": True,
+                "total_variations": total_variations,
+                "total_variations_formatted": fmt["short"],
+                "total_variations_exact": fmt["exact"],
+                "is_astronomical": fmt["is_astronomical"],
+                "mandatory_per_mix": 0,
+                "random_per_mix": req_random,
+                "total_songs_per_mix": songs_per_output,
+                "formula_desc": formula_desc,
+                "message": f"Dapat menghasilkan hingga {fmt['short']} variasi file MP3 unik (Tanpa Lagu Wajib)."
             }
-            
-        random_perms = math.perm(n_random, req_random) if req_random > 0 else 1
-        mandatory_perms = math.factorial(req_mandatory)
-        
-        if position_mode in ("start", "end"):
-            total_variations = mandatory_perms * random_perms
-            fmt = format_combinatorics_display(total_variations)
-            res_str = f"≈ {fmt['short']} (Tak Terbatas)" if fmt["is_astronomical"] else (f"≈ {fmt['short']}" if total_variations >= 1_000_000_000 else f"= {fmt['exact']}")
-            formula_desc = f"P({n_random}, {req_random}) × {req_mandatory}! {res_str}"
-        elif position_mode == "random":
-            slot_combinations = math.comb(songs_per_output, req_mandatory)
-            total_variations = slot_combinations * mandatory_perms * random_perms
-            fmt = format_combinatorics_display(total_variations)
-            res_str = f"≈ {fmt['short']} (Tak Terbatas)" if fmt["is_astronomical"] else (f"≈ {fmt['short']}" if total_variations >= 1_000_000_000 else f"= {fmt['exact']}")
-            formula_desc = f"C({songs_per_output}, {req_mandatory}) × {req_mandatory}! × P({n_random}, {req_random}) {res_str}"
-            
+
+    else:
+        # Loop is ENABLED!
+        k = loop_pool_count if (0 < loop_pool_count <= n_random) else n_random
+        subset_choices = math.comb(n_random, k)
+
+        if mandatory_enabled:
+            if mandatory_mode == "all":
+                req_mandatory = n_mandatory
+                mand_perms = math.factorial(req_mandatory)
+            else:
+                req_mandatory = 1
+                mand_perms = n_mandatory
+            req_random = max(1, songs_per_output - req_mandatory)
+        else:
+            req_mandatory = 0
+            mand_perms = 1
+            req_random = max(1, songs_per_output)
+
+        if loop_order == "sequential":
+            cycle_perms = math.factorial(k)
+            pool_perms = subset_choices * cycle_perms
+            loop_desc = f"P({n_random}, {k})"
+        else:
+            if k > 1:
+                shuffle_arrangements = k * ((k - 1) ** max(0, req_random - 1))
+            else:
+                shuffle_arrangements = 1
+            pool_perms = subset_choices * shuffle_arrangements
+            loop_desc = f"C({n_random}, {k}) × {k}×{max(1, k-1)}^{req_random-1}"
+
+        if mandatory_enabled:
+            if position_mode in ("start", "end"):
+                total_variations = mand_perms * pool_perms
+                formula_desc = f"{mand_perms} (Wajib) × {loop_desc}"
+            else:
+                slot_comb = math.comb(songs_per_output, req_mandatory)
+                total_variations = slot_comb * mand_perms * pool_perms
+                formula_desc = f"C({songs_per_output}, {req_mandatory}) × {mand_perms} × {loop_desc}"
+        else:
+            total_variations = pool_perms
+            formula_desc = f"Loop: {loop_desc}"
+
+        fmt = format_combinatorics_display(total_variations)
+        res_str = f"≈ {fmt['short']} (Tak Terbatas)" if fmt["is_astronomical"] else (f"≈ {fmt['short']}" if total_variations >= 1_000_000_000 else f"= {fmt['exact']}")
+        formula_desc = f"{formula_desc} {res_str}"
+
         return {
             "valid": True,
             "total_variations": total_variations,
@@ -362,56 +598,7 @@ def calculate_combinations(
             "random_per_mix": req_random,
             "total_songs_per_mix": songs_per_output,
             "formula_desc": formula_desc,
-            "message": f"Dapat menghasilkan hingga {fmt['short']} variasi file MP3 unik."
-        }
-        
-    elif mandatory_mode == "one":
-        req_mandatory = 1
-        if songs_per_output < 1:
-            return {
-                "valid": False,
-                "total_variations": 0,
-                "total_variations_formatted": "0",
-                "total_variations_exact": "0",
-                "is_astronomical": False,
-                "message": "Jumlah lagu per output minimal 1."
-            }
-        req_random = songs_per_output - 1
-        if req_random > n_random:
-            return {
-                "valid": False,
-                "total_variations": 0,
-                "total_variations_formatted": "0",
-                "total_variations_exact": "0",
-                "is_astronomical": False,
-                "message": f"Dibutuhkan {req_random} lagu acak per file, tetapi di pool hanya ada {n_random} lagu."
-            }
-            
-        mandatory_choices = n_mandatory
-        random_perms = math.perm(n_random, req_random) if req_random > 0 else 1
-        
-        if position_mode in ("start", "end"):
-            total_variations = mandatory_choices * random_perms
-            fmt = format_combinatorics_display(total_variations)
-            res_str = f"≈ {fmt['short']} (Tak Terbatas)" if fmt["is_astronomical"] else (f"≈ {fmt['short']}" if total_variations >= 1_000_000_000 else f"= {fmt['exact']}")
-            formula_desc = f"{n_mandatory} × P({n_random}, {req_random}) {res_str}"
-        elif position_mode == "random":
-            total_variations = songs_per_output * mandatory_choices * random_perms
-            fmt = format_combinatorics_display(total_variations)
-            res_str = f"≈ {fmt['short']} (Tak Terbatas)" if fmt["is_astronomical"] else (f"≈ {fmt['short']}" if total_variations >= 1_000_000_000 else f"= {fmt['exact']}")
-            formula_desc = f"{songs_per_output} (slot) × {n_mandatory} × P({n_random}, {req_random}) {res_str}"
-            
-        return {
-            "valid": True,
-            "total_variations": total_variations,
-            "total_variations_formatted": fmt["short"],
-            "total_variations_exact": fmt["exact"],
-            "is_astronomical": fmt["is_astronomical"],
-            "mandatory_per_mix": 1,
-            "random_per_mix": req_random,
-            "total_songs_per_mix": songs_per_output,
-            "formula_desc": formula_desc,
-            "message": f"Dapat menghasilkan hingga {fmt['short']} variasi file MP3 unik."
+            "message": f"Dapat menghasilkan hingga {fmt['short']} variasi unik dalam mode Loop."
         }
 
 
@@ -421,67 +608,150 @@ def generate_batch_playlists(
     songs_per_output: int,
     batch_count: int,
     position_mode: str = "random",
-    mandatory_mode: str = "all"
+    mandatory_mode: str = "all",
+    mandatory_enabled: bool = True,
+    loop_enabled: bool = False,
+    loop_target_type: str = "count",
+    loop_target_duration_sec: float = 3600.0,
+    loop_pool_count: int = 0,
+    loop_order: str = "random",
+    crossfade_sec: float = 0.0
 ) -> List[List[Dict[str, Any]]]:
     """
     Generates 'batch_count' unique track sequence playlists without duplicates.
+    Supports Mandatory Toggle and Looping/Random Loop with target count or duration.
     """
     calc = calculate_combinations(
-        len(mandatory_tracks),
-        len(random_tracks),
-        songs_per_output,
-        position_mode,
-        mandatory_mode
+        n_mandatory=len(mandatory_tracks) if mandatory_enabled else 0,
+        n_random=len(random_tracks),
+        songs_per_output=songs_per_output,
+        position_mode=position_mode,
+        mandatory_mode=mandatory_mode,
+        mandatory_enabled=mandatory_enabled,
+        loop_enabled=loop_enabled,
+        loop_target_type=loop_target_type,
+        loop_pool_count=loop_pool_count,
+        loop_order=loop_order
     )
-    
+
     if not calc["valid"] or calc["total_variations"] <= 0:
         raise ValueError(calc.get("message", "Konfigurasi tidak valid untuk menghasilkan kombinasi."))
-        
+
     actual_batch_count = min(batch_count, calc["total_variations"])
     generated_playlists = []
     seen_hashes = set()
-    
+
     attempts = 0
-    max_attempts = actual_batch_count * 500
-    
+    max_attempts = max(500, actual_batch_count * 500)
+
     while len(generated_playlists) < actual_batch_count and attempts < max_attempts:
         attempts += 1
-        
-        if mandatory_mode == "all":
-            chosen_mandatory = list(mandatory_tracks)
-            random.shuffle(chosen_mandatory)
+
+        # 1. Determine mandatory tracks for this mix
+        if mandatory_enabled and mandatory_tracks:
+            if mandatory_mode == "all":
+                chosen_mandatory = list(mandatory_tracks)
+                random.shuffle(chosen_mandatory)
+            else:
+                chosen_mandatory = [random.choice(mandatory_tracks)]
         else:
-            chosen_mandatory = [random.choice(mandatory_tracks)]
-            
-        req_random = songs_per_output - len(chosen_mandatory)
-        if req_random > 0:
-            chosen_random = random.sample(random_tracks, req_random)
+            chosen_mandatory = []
+
+        # 2. Determine random tracks
+        if not loop_enabled:
+            req_random = max(0, songs_per_output - len(chosen_mandatory))
+            if req_random > 0:
+                chosen_random = random.sample(random_tracks, req_random)
+            else:
+                chosen_random = []
         else:
-            chosen_random = []
-            
+            # Looping enabled!
+            k = loop_pool_count if (0 < loop_pool_count <= len(random_tracks)) else len(random_tracks)
+            pool_subset = random.sample(random_tracks, k)
+
+            if loop_target_type == "duration":
+                # Duration-based looping
+                chosen_random = []
+                cur_dur = 0.0
+                for i, m in enumerate(chosen_mandatory):
+                    d = float(m.get("duration", 180.0))
+                    if i == 0:
+                        cur_dur += d
+                    else:
+                        cur_dur += max(0.0, d - crossfade_sec)
+
+                last_path = None
+                seq_idx = 0
+                cycle_tracks = list(pool_subset)
+                random.shuffle(cycle_tracks)
+                max_loop_limit = 300
+
+                while (cur_dur < loop_target_duration_sec or len(chosen_random) == 0) and len(chosen_random) < max_loop_limit:
+                    if loop_order == "random":
+                        candidates = [t for t in pool_subset if t["path"] != last_path] if len(pool_subset) > 1 else pool_subset
+                        next_track = random.choice(candidates)
+                    else:
+                        next_track = cycle_tracks[seq_idx % len(cycle_tracks)]
+                        seq_idx += 1
+
+                    chosen_random.append(next_track)
+                    last_path = next_track["path"]
+                    t_dur = float(next_track.get("duration", 180.0))
+                    if len(chosen_random) == 1 and len(chosen_mandatory) == 0:
+                        cur_dur += t_dur
+                    else:
+                        cur_dur += max(0.0, t_dur - crossfade_sec)
+            else:
+                # Count-based looping
+                req_random = max(0, songs_per_output - len(chosen_mandatory))
+                chosen_random = []
+                if req_random > 0:
+                    if loop_order == "random":
+                        last_path = None
+                        for _ in range(req_random):
+                            candidates = [t for t in pool_subset if t["path"] != last_path] if len(pool_subset) > 1 else pool_subset
+                            next_track = random.choice(candidates)
+                            chosen_random.append(next_track)
+                            last_path = next_track["path"]
+                    else:
+                        cycle_tracks = list(pool_subset)
+                        random.shuffle(cycle_tracks)
+                        for i in range(req_random):
+                            chosen_random.append(cycle_tracks[i % len(cycle_tracks)])
+
+        # 3. Assemble full playlist
         playlist = []
-        if position_mode == "start":
-            playlist = chosen_mandatory + chosen_random
-        elif position_mode == "end":
-            playlist = chosen_random + chosen_mandatory
-        elif position_mode == "random":
+        if chosen_mandatory:
+            if position_mode == "start":
+                playlist = chosen_mandatory + chosen_random
+            elif position_mode == "end":
+                playlist = chosen_random + chosen_mandatory
+            elif position_mode == "random":
+                playlist = list(chosen_random)
+                for m_track in chosen_mandatory:
+                    insert_idx = random.randint(0, len(playlist))
+                    playlist.insert(insert_idx, m_track)
+        else:
             playlist = list(chosen_random)
-            for m_track in chosen_mandatory:
-                insert_idx = random.randint(0, len(playlist))
-                playlist.insert(insert_idx, m_track)
-                
+
+        # 4. Anti-duplicate signature hash
         sig = "|".join([t["path"] for t in playlist])
         sig_hash = hashlib.sha256(sig.encode("utf-8")).hexdigest()
-        
+
         if sig_hash not in seen_hashes:
             seen_hashes.add(sig_hash)
             tagged_playlist = []
             for track in playlist:
-                is_mand = any(track["path"] == m["path"] for m in mandatory_tracks)
+                is_mand = bool(mandatory_enabled and any(track["path"] == m["path"] for m in mandatory_tracks))
                 track_copy = dict(track)
                 track_copy["is_mandatory"] = is_mand
                 tagged_playlist.append(track_copy)
             generated_playlists.append(tagged_playlist)
+
+    if not generated_playlists and attempts >= max_attempts:
+        raise ValueError("Gagal menghasilkan playlist unik setelah beberapa percobaan. Coba kurangi jumlah batch atau ubah pengaturan.")
+
+    return generated_playlists
             
     return generated_playlists
 

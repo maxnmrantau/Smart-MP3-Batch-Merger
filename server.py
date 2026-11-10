@@ -218,15 +218,28 @@ def background_merge_worker(config: Dict[str, Any]):
         target_bitrate = int(config.get("target_bitrate", 320))
         target_sample_rate = int(config.get("target_sample_rate", 44100))
         output_prefix = config.get("output_prefix", "Mix_Merged")
+
+        # New features config
+        mandatory_enabled = bool(config.get("mandatory_enabled", True))
+        loop_enabled = bool(config.get("loop_enabled", False))
+        loop_target_type = str(config.get("loop_target_type", "count"))
+        loop_target_duration_min = float(config.get("loop_target_duration_min", 60.0))
+        loop_target_duration_sec = loop_target_duration_min * 60.0
+        loop_pool_count = int(config.get("loop_pool_count", 0))
+        loop_order = str(config.get("loop_order", "random"))
+        summary_format = str(config.get("summary_format", "both"))
         
         # 1. Scan folders
-        mandatory_tracks = merger_engine.scan_audio_folder(mandatory_folder)
         random_tracks = merger_engine.scan_audio_folder(random_folder)
-        
-        if not mandatory_tracks:
-            raise ValueError(f"Tidak ada file audio ditemukan di Folder Lagu Wajib: {mandatory_folder}")
         if not random_tracks:
             raise ValueError(f"Tidak ada file audio ditemukan di Folder Lagu Random: {random_folder}")
+
+        if mandatory_enabled:
+            mandatory_tracks = merger_engine.scan_audio_folder(mandatory_folder)
+            if not mandatory_tracks:
+                raise ValueError(f"Lagu Wajib diaktifkan, namun tidak ada file audio di Folder Lagu Wajib: {mandatory_folder}")
+        else:
+            mandatory_tracks = []
             
         os.makedirs(output_folder, exist_ok=True)
         
@@ -237,7 +250,14 @@ def background_merge_worker(config: Dict[str, Any]):
             songs_per_output=songs_per_output,
             batch_count=batch_count,
             position_mode=position_mode,
-            mandatory_mode=mandatory_mode
+            mandatory_mode=mandatory_mode,
+            mandatory_enabled=mandatory_enabled,
+            loop_enabled=loop_enabled,
+            loop_target_type=loop_target_type,
+            loop_target_duration_sec=loop_target_duration_sec,
+            loop_pool_count=loop_pool_count,
+            loop_order=loop_order,
+            crossfade_sec=crossfade_sec
         )
         
         total_batches = len(playlists)
@@ -245,12 +265,16 @@ def background_merge_worker(config: Dict[str, Any]):
             merge_task_state["total_files"] = total_batches
             merge_task_state["logs"].append(f"Berhasil merancang {total_batches} kombinasi playlist unik anti-duplikat.")
             
+        mand_status = f"AKTIF (Posisi: {position_mode.upper()} | Mode: {mandatory_mode.upper()})" if mandatory_enabled else "NONAKTIF (OFF)"
+        loop_status = f"AKTIF ({'Acak Loop' if loop_order == 'random' else 'Berurutan'} | Target: {int(loop_target_duration_min) if loop_target_type == 'duration' else songs_per_output} {'Menit' if loop_target_type == 'duration' else 'Lagu'})" if loop_enabled else "NONAKTIF (OFF)"
+
         summary_log_lines = [
             "=" * 70,
             f" SMART MP3 MERGER - SUMMARY BATCH REPORT",
             f" Tanggal & Waktu: {time.strftime('%Y-%m-%d %H:%M:%S')}",
             f" Total File Dihasilkan: {total_batches} File",
-            f" Posisi Lagu Wajib: {position_mode.upper()} | Mode: {mandatory_mode.upper()}",
+            f" Lagu Wajib: {mand_status}",
+            f" Fitur Loop: {loop_status}",
             f" Bitrate Output: {target_bitrate} kbps | Crossfade: {crossfade_sec}s",
             "=" * 70,
             ""
@@ -261,7 +285,11 @@ def background_merge_worker(config: Dict[str, Any]):
             if merge_cancel_event.is_set():
                 raise InterruptedError("Proses merge dibatalkan oleh pengguna.")
 
-            out_name = f"{output_prefix}_{idx:02d}_{songs_per_output}Songs.mp3"
+            if loop_enabled and loop_target_type == "duration":
+                out_name = f"{output_prefix}_{idx:02d}_{int(loop_target_duration_min)}Min_{len(pl)}Songs.mp3"
+            else:
+                out_name = f"{output_prefix}_{idx:02d}_{len(pl)}Songs.mp3"
+
             out_path = os.path.join(output_folder, out_name)
             
             with state_lock:
@@ -282,13 +310,23 @@ def background_merge_worker(config: Dict[str, Any]):
                 cancel_event=merge_cancel_event,
                 proc_holder=merge_proc_holder
             )
+
+            # Generate Timestamps for YouTube and Standard formats
+            ts_data = merger_engine.generate_youtube_timestamps(pl, crossfade_sec=crossfade_sec)
+            yt_ts_text = merger_engine.format_timestamps_text(ts_data, "youtube")
+            std_ts_text = merger_engine.format_timestamps_text(ts_data, "standard")
             
             # Record summary line
-            summary_log_lines.append(f"[{idx:02d}] {out_name} (Durasi: {file_info['duration_formatted']}, Bitrate: {file_info['bitrate']}k)")
-            for s_idx, s_track in enumerate(pl, start=1):
-                role_tag = "[WAJIB]" if s_track.get("is_mandatory") else "[RANDOM]"
-                summary_log_lines.append(f"     Slot #{s_idx} {role_tag}: {s_track['filename']} ({s_track['duration_formatted']})")
-            summary_log_lines.append("-" * 50)
+            summary_log_lines.append(f"[{idx:02d}] {out_name} (Durasi: {file_info['duration_formatted']}, Bitrate: {file_info['bitrate']}k, {len(pl)} Lagu)")
+            summary_log_lines.append("  ▶ Timestamps YouTube (Siap Paste ke Deskripsi YouTube):")
+            for yl in yt_ts_text.splitlines():
+                summary_log_lines.append(f"    {yl}")
+            summary_log_lines.append("")
+            summary_log_lines.append("  ▶ Detail Slot Lagu Biasa:")
+            for sl in std_ts_text.splitlines():
+                summary_log_lines.append(f"    {sl}")
+            summary_log_lines.append("-" * 70)
+            summary_log_lines.append("")
             
             with state_lock:
                 merge_task_state["completed_files"].append({
@@ -298,7 +336,10 @@ def background_merge_worker(config: Dict[str, Any]):
                     "duration": file_info["duration"],
                     "duration_formatted": file_info["duration_formatted"],
                     "bitrate": file_info["bitrate"],
-                    "playlist_details": pl
+                    "playlist_details": pl,
+                    "timestamps": ts_data,
+                    "youtube_timestamps": yt_ts_text,
+                    "standard_timestamps": std_ts_text
                 })
                 merge_task_state["progress_percent"] = int((idx / total_batches) * 100)
                 merge_task_state["logs"].append(f"[OK] Selesai: '{out_name}' ({file_info['duration_formatted']})")
@@ -307,9 +348,33 @@ def background_merge_worker(config: Dict[str, Any]):
         summary_path = os.path.join(output_folder, "playlist_summary.txt")
         with open(summary_path, "w", encoding="utf-8") as f:
             f.write("\n".join(summary_log_lines))
+
+        # Also write dedicated youtube_timestamps.txt for ultra easy copy-paste
+        yt_summary_lines = [
+            "=" * 70,
+            " TIMESTAMPS DESKRIPSI YOUTUBE (SIAP COPY & PASTE)",
+            " Smart MP3 Batch Merger & Randomizer",
+            f" Tanggal & Waktu: {time.strftime('%Y-%m-%d %H:%M:%S')}",
+            "=" * 70,
+            ""
+        ]
+        with state_lock:
+            completed_snap = list(merge_task_state["completed_files"])
+
+        for cf in completed_snap:
+            yt_summary_lines.append(f"=== {cf['filename']} ({cf['duration_formatted']}) ===")
+            yt_summary_lines.append(cf.get("youtube_timestamps", ""))
+            yt_summary_lines.append("")
+            yt_summary_lines.append("-" * 50)
+            yt_summary_lines.append("")
+
+        yt_summary_path = os.path.join(output_folder, "youtube_timestamps.txt")
+        with open(yt_summary_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(yt_summary_lines))
             
         with state_lock:
-            merge_task_state["logs"].append(f"[OK] Laporan urutan lagu disimpan di: {os.path.basename(summary_path)}")
+            merge_task_state["logs"].append(f"[OK] Laporan lengkap disimpan di: {os.path.basename(summary_path)}")
+            merge_task_state["logs"].append(f"[OK] Timestamps YouTube disimpan di: {os.path.basename(yt_summary_path)}")
             merge_task_state["progress_percent"] = 100
             
     except InterruptedError:
@@ -523,13 +588,23 @@ class AppRequestHandler(SimpleHTTPRequestHandler):
             songs_per_output = int(data.get("songs_per_output", 5))
             position_mode = data.get("position_mode", "random")
             mandatory_mode = data.get("mandatory_mode", "all")
+            mandatory_enabled = bool(data.get("mandatory_enabled", True))
+            loop_enabled = bool(data.get("loop_enabled", False))
+            loop_target_type = str(data.get("loop_target_type", "count"))
+            loop_pool_count = int(data.get("loop_pool_count", 0))
+            loop_order = str(data.get("loop_order", "random"))
             
             result = merger_engine.calculate_combinations(
                 n_mandatory=n_mandatory,
                 n_random=n_random,
                 songs_per_output=songs_per_output,
                 position_mode=position_mode,
-                mandatory_mode=mandatory_mode
+                mandatory_mode=mandatory_mode,
+                mandatory_enabled=mandatory_enabled,
+                loop_enabled=loop_enabled,
+                loop_target_type=loop_target_type,
+                loop_pool_count=loop_pool_count,
+                loop_order=loop_order
             )
             self._send_json(result)
             return

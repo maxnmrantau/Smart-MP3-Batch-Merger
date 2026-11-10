@@ -67,11 +67,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const songsPerOutputVal = document.getElementById('songsPerOutputVal');
   const songsPerOutputNum = document.getElementById('songsPerOutputNum');
   const songsCompositionHint = document.getElementById('songsCompositionHint');
-  const durationEstVal = document.getElementById('durationEstVal');
-  const durationRangeVal = document.getElementById('durationRangeVal');
-  const durationSafetyBadge = document.getElementById('durationSafetyBadge');
-  const durationStatusIcon = document.getElementById('durationStatusIcon');
-  const durationStatusText = document.getElementById('durationStatusText');
   const batchCountRange = document.getElementById('batchCountRange');
   const batchCountVal = document.getElementById('batchCountVal');
   const batchCountNum = document.getElementById('batchCountNum');
@@ -80,6 +75,42 @@ document.addEventListener('DOMContentLoaded', () => {
   const crossfadeVal = document.getElementById('crossfadeVal');
   const audioQualitySelect = document.getElementById('audioQualitySelect');
   const mandatoryModeBlock = document.getElementById('mandatoryModeBlock');
+
+  // New Feature 2: Mandatory Toggle Elements
+  const mandatoryToggle = document.getElementById('mandatoryToggle');
+  const mandatoryToggleText = document.getElementById('mandatoryToggleText');
+  const positionSettingBlock = document.getElementById('positionSettingBlock');
+
+  // New Feature 1: Loop Controls Elements
+  const loopSettingBlock = document.getElementById('loopSettingBlock');
+  const loopToggle = document.getElementById('loopToggle');
+  const loopToggleText = document.getElementById('loopToggleText');
+  const loopBadge = document.getElementById('loopBadge');
+  const loopSubpanel = document.getElementById('loopSubpanel');
+  const loopDurationInputGroup = document.getElementById('loopDurationInputGroup');
+  const loopTargetDurationNum = document.getElementById('loopTargetDurationNum');
+  const loopDurationHint = document.getElementById('loopDurationHint');
+  const loopPoolCountGroup = document.getElementById('loopPoolCountGroup');
+  const loopPoolCountRange = document.getElementById('loopPoolCountRange');
+  const loopPoolCountNum = document.getElementById('loopPoolCountNum');
+  const loopPoolCountHint = document.getElementById('loopPoolCountHint');
+  const loopOrderDesc = document.getElementById('loopOrderDesc');
+
+  // New Feature 3: Summary & Timestamps Elements
+  const summaryFormatSelect = document.getElementById('summaryFormatSelect');
+  const timestampsModal = document.getElementById('timestampsModal');
+  const tsModalTitle = document.getElementById('tsModalTitle');
+  const tsModalSubtitle = document.getElementById('tsModalSubtitle');
+  const btnCloseTsModal = document.getElementById('btnCloseTsModal');
+  const btnCloseTsModalBottom = document.getElementById('btnCloseTsModalBottom');
+  const tabBtnTsYt = document.getElementById('tabBtnTsYt');
+  const tabBtnTsStd = document.getElementById('tabBtnTsStd');
+  const paneTsYt = document.getElementById('paneTsYt');
+  const paneTsStd = document.getElementById('paneTsStd');
+  const tsYtTextarea = document.getElementById('tsYtTextarea');
+  const tsStdTextarea = document.getElementById('tsStdTextarea');
+  const btnCopyYtModal = document.getElementById('btnCopyYtModal');
+  const btnCopyStdModal = document.getElementById('btnCopyStdModal');
 
   // Inspector Card
   const totalVariationsDisplay = document.getElementById('totalVariationsDisplay');
@@ -435,21 +466,44 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateFolderUI() {
+    const isMandatory = mandatoryToggle ? mandatoryToggle.checked : true;
+
     // Mandatory tracks UI
-    mandatoryCountBadge.textContent = `${scannedData.mandatory_count} Lagu Terdeteksi`;
-    inspectorMandatoryCount.textContent = `${scannedData.mandatory_count} Lagu`;
-    mandatoryTrackChips.innerHTML = '';
-    scannedData.mandatory_tracks.slice(0, 8).forEach(t => {
-      const chip = document.createElement('span');
-      chip.className = 'track-chip';
-      chip.innerHTML = `🎵 ${t.filename} <span class="chip-dur">${t.duration_formatted}</span>`;
-      mandatoryTrackChips.appendChild(chip);
-    });
-    if (scannedData.mandatory_count > 8) {
-      const moreChip = document.createElement('span');
-      moreChip.className = 'track-chip';
-      moreChip.textContent = `+${scannedData.mandatory_count - 8} lagu lainnya...`;
-      mandatoryTrackChips.appendChild(moreChip);
+    if (!isMandatory) {
+      if (mandatoryDropZone) mandatoryDropZone.classList.add('disabled-zone');
+      if (mandatoryToggleText) mandatoryToggleText.textContent = 'OFF';
+      if (mandatoryCountBadge) mandatoryCountBadge.textContent = 'Dinonaktifkan';
+      if (inspectorMandatoryCount) inspectorMandatoryCount.textContent = 'Nonaktif (0 Lagu)';
+      if (positionSettingBlock) positionSettingBlock.classList.add('disabled-block');
+      if (mandatoryModeBlock) mandatoryModeBlock.style.display = 'none';
+      if (mandatoryTrackChips) mandatoryTrackChips.innerHTML = '<span class="track-chip" style="opacity:0.6;">(Lagu Wajib dinonaktifkan — seluruh lagu diambil dari pool acak)</span>';
+    } else {
+      if (mandatoryDropZone) mandatoryDropZone.classList.remove('disabled-zone');
+      if (mandatoryToggleText) mandatoryToggleText.textContent = 'ON';
+      if (mandatoryCountBadge) mandatoryCountBadge.textContent = `${scannedData.mandatory_count} Lagu Terdeteksi`;
+      if (inspectorMandatoryCount) inspectorMandatoryCount.textContent = `${scannedData.mandatory_count} Lagu`;
+      if (positionSettingBlock) positionSettingBlock.classList.remove('disabled-block');
+      
+      // Toggle mandatory mode block visibility if >1 mandatory tracks
+      if (scannedData.mandatory_count > 1) {
+        if (mandatoryModeBlock) mandatoryModeBlock.style.display = 'flex';
+      } else {
+        if (mandatoryModeBlock) mandatoryModeBlock.style.display = 'none';
+      }
+
+      mandatoryTrackChips.innerHTML = '';
+      scannedData.mandatory_tracks.slice(0, 8).forEach(t => {
+        const chip = document.createElement('span');
+        chip.className = 'track-chip';
+        chip.innerHTML = `🎵 ${t.filename} <span class="chip-dur">${t.duration_formatted}</span>`;
+        mandatoryTrackChips.appendChild(chip);
+      });
+      if (scannedData.mandatory_count > 8) {
+        const moreChip = document.createElement('span');
+        moreChip.className = 'track-chip';
+        moreChip.textContent = `+${scannedData.mandatory_count - 8} lagu lainnya...`;
+        mandatoryTrackChips.appendChild(moreChip);
+      }
     }
 
     // Random tracks UI
@@ -472,11 +526,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // Bitrate display
     inspectorBitrate.textContent = `Auto (${scannedData.detected_bitrate} kbps)`;
 
-    // Toggle mandatory mode block visibility if >1 mandatory tracks
-    if (scannedData.mandatory_count > 1) {
-      mandatoryModeBlock.style.display = 'flex';
-    } else {
-      mandatoryModeBlock.style.display = 'none';
+    // Update loop subset slider limits
+    if (loopPoolCountRange) {
+      const poolMax = Math.max(1, scannedData.random_count || 10);
+      loopPoolCountRange.max = poolMax;
+      if (loopPoolCountNum) loopPoolCountNum.max = poolMax;
+      let curVal = parseInt(loopPoolCountRange.value, 10);
+      if (isNaN(curVal) || curVal > poolMax || curVal <= 0) {
+        curVal = poolMax;
+        loopPoolCountRange.value = curVal;
+        if (loopPoolCountNum) loopPoolCountNum.value = curVal;
+      }
+      if (loopPoolCountHint) {
+        loopPoolCountHint.textContent = `Memilih ${curVal} lagu dari pool ${scannedData.random_count || 0} lagu untuk di-loop.`;
+      }
     }
 
     syncSongsPerOutputLimits();
@@ -504,19 +567,27 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function calculateDurationEstimates(songsPerOutput, mandatoryMode, crossfadeSec = 0) {
-    const nMandatory = scannedData.mandatory_count || 0;
+    const isMandatory = mandatoryToggle ? mandatoryToggle.checked : true;
+    const isLoop = loopToggle ? loopToggle.checked : false;
+    const loopTargetType = document.querySelector('input[name="loopTargetType"]:checked')?.value || 'count';
+    const loopDurationMin = loopTargetDurationNum ? parseFloat(loopTargetDurationNum.value) || 60 : 60;
+
+    const nMandatory = isMandatory ? (scannedData.mandatory_count || 0) : 0;
     const nRandom = scannedData.random_count || 0;
 
-    const mandatoryTracks = scannedData.mandatory_tracks || [];
+    const mandatoryTracks = isMandatory ? (scannedData.mandatory_tracks || []) : [];
     const randomTracks = scannedData.random_tracks || [];
 
-    const usedMandatory = (mandatoryMode === 'all') ? nMandatory : (nMandatory > 0 ? 1 : 0);
+    const usedMandatory = isMandatory ? ((mandatoryMode === 'all') ? nMandatory : (nMandatory > 0 ? 1 : 0)) : 0;
     const usedRandom = Math.max(0, songsPerOutput - usedMandatory);
 
     // If no tracks scanned yet, return fallback based on default 3.0 mins (180s)
     if (mandatoryTracks.length === 0 && randomTracks.length === 0) {
       const avgSong = 180;
-      const est = songsPerOutput * avgSong;
+      let est = songsPerOutput * avgSong;
+      if (isLoop && loopTargetType === 'duration') {
+        est = loopDurationMin * 60;
+      }
       return {
         hasData: false,
         avgDur: est,
@@ -545,20 +616,22 @@ document.addEventListener('DOMContentLoaded', () => {
     let mandMin = 0;
     let mandMax = 0;
 
-    if (mandatoryMode === 'all') {
-      const totalMand = mandDurs.reduce((a, b) => a + b, 0);
-      mandAvg = totalMand;
-      mandMin = totalMand;
-      mandMax = totalMand;
-    } else {
-      if (mandDurs.length > 0) {
-        mandAvg = avgMandatorySingle;
-        mandMin = Math.min(...mandDurs);
-        mandMax = Math.max(...mandDurs);
+    if (isMandatory) {
+      if (mandatoryMode === 'all') {
+        const totalMand = mandDurs.reduce((a, b) => a + b, 0);
+        mandAvg = totalMand;
+        mandMin = totalMand;
+        mandMax = totalMand;
       } else {
-        mandAvg = defaultDur;
-        mandMin = defaultDur;
-        mandMax = defaultDur;
+        if (mandDurs.length > 0) {
+          mandAvg = avgMandatorySingle;
+          mandMin = Math.min(...mandDurs);
+          mandMax = Math.max(...mandDurs);
+        } else {
+          mandAvg = defaultDur;
+          mandMin = defaultDur;
+          mandMax = defaultDur;
+        }
       }
     }
 
@@ -567,25 +640,33 @@ document.addEventListener('DOMContentLoaded', () => {
     let randMin = 0;
     let randMax = 0;
 
-    if (usedRandom > 0) {
-      if (randDurs.length >= usedRandom) {
-        randMin = randDurs.slice(0, usedRandom).reduce((a, b) => a + b, 0);
-        randMax = randDurs.slice(-usedRandom).reduce((a, b) => a + b, 0);
-        randAvg = usedRandom * avgRandomSingle;
-      } else if (randDurs.length > 0) {
-        randMin = usedRandom * Math.min(...randDurs);
-        randMax = usedRandom * Math.max(...randDurs);
-        randAvg = usedRandom * avgRandomSingle;
-      } else {
-        randMin = usedRandom * defaultDur * 0.85;
-        randMax = usedRandom * defaultDur * 1.15;
-        randAvg = usedRandom * defaultDur;
+    if (isLoop && loopTargetType === 'duration') {
+      const targetSec = loopDurationMin * 60;
+      const netRandomNeeded = Math.max(0, targetSec - mandAvg);
+      randAvg = netRandomNeeded;
+      randMin = netRandomNeeded;
+      randMax = netRandomNeeded + avgRandomSingle;
+    } else {
+      if (usedRandom > 0) {
+        if (randDurs.length >= usedRandom) {
+          randMin = randDurs.slice(0, usedRandom).reduce((a, b) => a + b, 0);
+          randMax = randDurs.slice(-usedRandom).reduce((a, b) => a + b, 0);
+          randAvg = usedRandom * avgRandomSingle;
+        } else if (randDurs.length > 0) {
+          randMin = usedRandom * Math.min(...randDurs);
+          randMax = usedRandom * Math.max(...randDurs);
+          randAvg = usedRandom * avgRandomSingle;
+        } else {
+          randMin = usedRandom * defaultDur * 0.85;
+          randMax = usedRandom * defaultDur * 1.15;
+          randAvg = usedRandom * defaultDur;
+        }
       }
     }
 
     // Deduct crossfade overlap if > 0
     const transitionCount = Math.max(0, songsPerOutput - 1);
-    const overlapDeduction = transitionCount * crossfadeSec;
+    const overlapDeduction = (isLoop && loopTargetType === 'duration') ? 0 : transitionCount * crossfadeSec;
 
     const totalAvg = Math.max(0, mandAvg + randAvg - overlapDeduction);
     const totalMin = Math.max(0, mandMin + randMin - overlapDeduction);
@@ -601,8 +682,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // How many songs needed in worst-case (shortest songs) to guarantee 1 hour?
     let guaranteedSongs1Hour = neededFor1Hour;
     if (randDurs.length > 0) {
-      let accumMin = (mandatoryMode === 'all') ? mandMin : (mandDurs.length > 0 ? Math.min(...mandDurs) : 0);
-      let k = (mandatoryMode === 'all') ? nMandatory : (nMandatory > 0 ? 1 : 0);
+      let accumMin = isMandatory ? ((mandatoryMode === 'all') ? mandMin : (mandDurs.length > 0 ? Math.min(...mandDurs) : 0)) : 0;
+      let k = isMandatory ? ((mandatoryMode === 'all') ? nMandatory : (nMandatory > 0 ? 1 : 0)) : 0;
       let randIdx = 0;
       while (randIdx < randDurs.length && accumMin - Math.max(0, k - 1) * crossfadeSec < 3600) {
         accumMin += randDurs[randIdx];
@@ -624,23 +705,34 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function syncSongsPerOutputLimits() {
+    const isMandatory = mandatoryToggle ? mandatoryToggle.checked : true;
+    const isLoop = loopToggle ? loopToggle.checked : false;
     const mandatoryMode = document.querySelector('input[name="mandatoryMode"]:checked')?.value || 'all';
-    const nMandatory = scannedData.mandatory_count || 0;
+    const nMandatory = isMandatory ? (scannedData.mandatory_count || 0) : 0;
     const nRandom = scannedData.random_count || 0;
 
     let minRequired = 2;
     let maxAllowed = 100; // default initial max when no files loaded
 
-    if (nMandatory > 0 || nRandom > 0) {
-      if (mandatoryMode === 'all') {
-        minRequired = Math.max(2, nMandatory + (nRandom > 0 ? 1 : 0));
-        maxAllowed = nMandatory + nRandom;
-      } else {
-        // mandatoryMode === 'one'
-        minRequired = (nMandatory > 0 && nRandom > 0) ? 2 : 1;
-        maxAllowed = (nMandatory > 0 ? 1 : 0) + nRandom;
+    if (isLoop) {
+      minRequired = isMandatory && nMandatory > 0 ? (mandatoryMode === 'all' ? nMandatory + 1 : 2) : 2;
+      maxAllowed = 200; // In loop mode, user can request up to 200 songs!
+    } else if (isMandatory) {
+      if (nMandatory > 0 || nRandom > 0) {
+        if (mandatoryMode === 'all') {
+          minRequired = Math.max(2, nMandatory + (nRandom > 0 ? 1 : 0));
+          maxAllowed = nMandatory + nRandom;
+        } else {
+          // mandatoryMode === 'one'
+          minRequired = (nMandatory > 0 && nRandom > 0) ? 2 : 1;
+          maxAllowed = (nMandatory > 0 ? 1 : 0) + nRandom;
+        }
+        maxAllowed = Math.max(minRequired, maxAllowed);
       }
-      maxAllowed = Math.max(minRequired, maxAllowed);
+    } else {
+      // Mandatory is OFF, Loop is OFF
+      minRequired = 1;
+      maxAllowed = Math.max(1, nRandom || 100);
     }
 
     songsPerOutputRange.min = minRequired;
@@ -755,13 +847,20 @@ document.addEventListener('DOMContentLoaded', () => {
   async function calculateCombinations() {
     syncSongsPerOutputLimits();
 
+    const isMandatory = mandatoryToggle ? mandatoryToggle.checked : true;
+    const isLoop = loopToggle ? loopToggle.checked : false;
+    const loopTargetType = document.querySelector('input[name="loopTargetType"]:checked')?.value || 'count';
+    const loopDurationMin = loopTargetDurationNum ? parseFloat(loopTargetDurationNum.value) || 60 : 60;
+    const loopPoolCount = loopPoolCountRange ? parseInt(loopPoolCountRange.value, 10) : 0;
+    const loopOrder = document.querySelector('input[name="loopOrder"]:checked')?.value || 'random';
+
     const positionMode = document.querySelector('input[name="positionMode"]:checked')?.value || 'random';
     const mandatoryMode = document.querySelector('input[name="mandatoryMode"]:checked')?.value || 'all';
     const songsPerOutput = parseInt(songsPerOutputRange.value, 10);
     const crossfadeSec = parseFloat(crossfadeRange.value) || 0;
 
-    const nMandatory = scannedData.mandatory_count;
-    const nRandom = scannedData.random_count;
+    const nMandatory = isMandatory ? (scannedData.mandatory_count || 0) : 0;
+    const nRandom = scannedData.random_count || 0;
 
     // Calculate duration estimates
     const durInfo = calculateDurationEstimates(songsPerOutput, mandatoryMode, crossfadeSec);
@@ -777,54 +876,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Update composition hint
-    const usedMandatory = (mandatoryMode === 'all') ? nMandatory : (nMandatory > 0 ? 1 : 0);
-    const usedRandom = Math.max(0, songsPerOutput - usedMandatory);
-    songsCompositionHint.textContent = `Panjang 1 File MP3 = ${usedMandatory} Lagu Wajib + ${usedRandom} Lagu Random (${songsPerOutput} Lagu Total)`;
-
-    // Update duration estimate box
-    if (durationEstVal) {
-      durationEstVal.textContent = `~${formatFriendlyDuration(durInfo.avgDur)}`;
-    }
-    if (durationRangeVal) {
-      durationRangeVal.textContent = durInfo.hasData
-        ? `Rentang Acak: ${formatFriendlyDuration(durInfo.minDur)} s/d ${formatFriendlyDuration(durInfo.maxDur)}`
-        : `Rentang Acak: ~${formatFriendlyDuration(durInfo.minDur)} s/d ~${formatFriendlyDuration(durInfo.maxDur)} (estimasi)`;
-    }
-
-    // Update safety badge
-    if (durationSafetyBadge && durationStatusText) {
-      durationSafetyBadge.className = 'dur-safety-badge';
-      if (!durInfo.hasData) {
-        durationSafetyBadge.classList.add('safety-info');
-        if (durationStatusIcon) durationStatusIcon.textContent = 'ℹ️';
-        durationStatusText.textContent = 'Pilih folder lagu untuk menghitung durasi riil dan rentang 1 jam.';
-      } else if (durInfo.minDur >= 3600) {
-        // Guaranteed >= 1 hour in all random variations
-        durationSafetyBadge.classList.add('safety-green');
-        if (durationStatusIcon) durationStatusIcon.textContent = '✅';
-        durationStatusText.innerHTML = `<strong>DIJAMIN AMAN:</strong> Semua variasi acak dipastikan berdurasi minimal <strong>${formatFriendlyDuration(durInfo.minDur)}</strong> (&ge; 1 Jam)!`;
-      } else if (durInfo.avgDur >= 3600 && durInfo.minDur < 3600) {
-        // Average >= 1 hour, but worst case < 1 hour
-        durationSafetyBadge.classList.add('safety-yellow');
-        if (durationStatusIcon) durationStatusIcon.textContent = '⚠️';
-        const extraNeeded = Math.max(1, durInfo.minSongsForGuaranteed1Hour - songsPerOutput);
-        durationStatusText.innerHTML = `Rata-rata sudah <strong>${formatFriendlyDuration(durInfo.avgDur)}</strong>, namun kemungkinan terendah <strong>${formatFriendlyDuration(durInfo.minDur)}</strong> jika terambil lagu-lagu pendek. (Saran: setel minimal <strong>${durInfo.minSongsForGuaranteed1Hour} lagu</strong> / +${extraNeeded} lagu agar 100% dijamin &ge; 1 Jam).`;
+    if (!isMandatory && !isLoop) {
+      songsCompositionHint.textContent = `Panjang 1 File MP3 = ${songsPerOutput} Lagu Random (Tanpa Lagu Wajib)`;
+    } else if (isMandatory && !isLoop) {
+      const usedMandatory = (mandatoryMode === 'all') ? nMandatory : (nMandatory > 0 ? 1 : 0);
+      const usedRandom = Math.max(0, songsPerOutput - usedMandatory);
+      songsCompositionHint.textContent = `Panjang 1 File MP3 = ${usedMandatory} Lagu Wajib + ${usedRandom} Lagu Random (${songsPerOutput} Lagu Total)`;
+    } else if (isLoop) {
+      if (loopTargetType === 'duration') {
+        const estTracks = Math.max(1, Math.round((loopDurationMin * 60) / Math.max(30, durInfo.avgSongDur - crossfadeSec)));
+        songsCompositionHint.textContent = `Target Durasi = ~${loopDurationMin} Menit (Estimasi ~${estTracks} Lagu Total dengan Loop ${loopPoolCount} Lagu)`;
       } else {
-        // Under 1 hour
-        durationSafetyBadge.classList.add('safety-info');
-        if (durationStatusIcon) durationStatusIcon.textContent = '💡';
-        durationStatusText.innerHTML = `Durasi saat ini di bawah 1 Jam (~<strong>${formatFriendlyDuration(durInfo.avgDur)}</strong>). Disarankan minimal <strong>${durInfo.suggestedFor1Hour}–${durInfo.minSongsForGuaranteed1Hour} lagu</strong> untuk mencapai target 1 Jam.`;
+        const usedMandatory = isMandatory ? ((mandatoryMode === 'all') ? nMandatory : (nMandatory > 0 ? 1 : 0)) : 0;
+        songsCompositionHint.textContent = `Panjang 1 File MP3 = ${songsPerOutput} Lagu Total (Loop dari ${loopPoolCount} Lagu Pool${isMandatory ? ' + ' + usedMandatory + ' Wajib' : ''})`;
       }
     }
 
-    if (nMandatory === 0 || nRandom === 0) {
+    if ((isMandatory && nMandatory === 0) || nRandom === 0) {
       totalVariationsDisplay.textContent = "--";
       totalVariationsDisplay.dataset.short = "--";
       totalVariationsDisplay.dataset.exact = "--";
       totalVariationsDisplay.dataset.view = "short";
       totalVariationsDisplay.classList.remove('metric-value-exact');
       if (metricToggleHint) metricToggleHint.textContent = "🔍 Klik Detail / Salin";
-      formulaDescDisplay.textContent = "Pilih file/folder lagu wajib dan random untuk menghitung variasi.";
+      formulaDescDisplay.textContent = isMandatory
+        ? "Pilih file/folder lagu wajib dan random untuk menghitung variasi."
+        : "Pilih file/folder pool lagu random untuk menghitung variasi.";
       return;
     }
 
@@ -833,11 +910,16 @@ document.addEventListener('DOMContentLoaded', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          n_mandatory: nMandatory,
+          n_mandatory: isMandatory ? nMandatory : 0,
           n_random: nRandom,
           songs_per_output: songsPerOutput,
           position_mode: positionMode,
-          mandatory_mode: mandatoryMode
+          mandatory_mode: mandatoryMode,
+          mandatory_enabled: isMandatory,
+          loop_enabled: isLoop,
+          loop_target_type: loopTargetType,
+          loop_pool_count: loopPoolCount,
+          loop_order: loopOrder
         })
       });
       const calc = await resp.json();
@@ -959,6 +1041,102 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Feature 2: Mandatory Toggle listener
+  if (mandatoryToggle) {
+    mandatoryToggle.addEventListener('change', () => {
+      updateFolderUI();
+      calculateCombinations();
+    });
+  }
+
+  // Feature 1: Loop Controls listeners
+  if (loopToggle) {
+    loopToggle.addEventListener('change', (e) => {
+      const isLoop = e.target.checked;
+      if (isLoop) {
+        if (loopSubpanel) loopSubpanel.classList.remove('hidden');
+        if (loopSettingBlock) loopSettingBlock.classList.add('active');
+        if (loopToggleText) loopToggleText.textContent = 'ON';
+        if (loopBadge) {
+          loopBadge.textContent = 'Aktif';
+          loopBadge.className = 'badge badge-accent';
+        }
+      } else {
+        if (loopSubpanel) loopSubpanel.classList.add('hidden');
+        if (loopSettingBlock) loopSettingBlock.classList.remove('active');
+        if (loopToggleText) loopToggleText.textContent = 'OFF';
+        if (loopBadge) {
+          loopBadge.textContent = 'Nonaktif';
+          loopBadge.className = 'badge';
+        }
+      }
+      syncSongsPerOutputLimits();
+      calculateCombinations();
+    });
+  }
+
+  document.querySelectorAll('input[name="loopTargetType"]').forEach(el => {
+    el.addEventListener('change', (e) => {
+      const isDuration = e.target.value === 'duration';
+      if (loopDurationInputGroup) {
+        if (isDuration) {
+          loopDurationInputGroup.classList.remove('hidden');
+        } else {
+          loopDurationInputGroup.classList.add('hidden');
+        }
+      }
+      calculateCombinations();
+    });
+  });
+
+  if (loopTargetDurationNum) {
+    loopTargetDurationNum.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value, 10) || 60;
+      if (loopDurationHint) {
+        loopDurationHint.innerHTML = `Lagu di-loop hingga durasi mencapai minimal <strong>${val} Menit (${(val / 60).toFixed(1)} Jam)</strong>.`;
+      }
+      calculateCombinations();
+    });
+  }
+
+  if (loopPoolCountRange) {
+    loopPoolCountRange.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value, 10);
+      if (loopPoolCountNum) loopPoolCountNum.value = val;
+      if (loopPoolCountHint) {
+        loopPoolCountHint.textContent = `Memilih ${val} lagu dari pool ${scannedData.random_count || 0} lagu untuk di-loop.`;
+      }
+      calculateCombinations();
+    });
+  }
+
+  if (loopPoolCountNum) {
+    loopPoolCountNum.addEventListener('input', (e) => {
+      const max = parseInt(loopPoolCountRange.max, 10) || 10;
+      let val = parseInt(e.target.value, 10);
+      if (isNaN(val)) return;
+      val = Math.max(1, Math.min(max, val));
+      loopPoolCountRange.value = val;
+      if (loopPoolCountHint) {
+        loopPoolCountHint.textContent = `Memilih ${val} lagu dari pool ${scannedData.random_count || 0} lagu untuk di-loop.`;
+      }
+      calculateCombinations();
+    });
+  }
+
+  document.querySelectorAll('input[name="loopOrder"]').forEach(el => {
+    el.addEventListener('change', (e) => {
+      if (loopOrderDesc) {
+        if (e.target.value === 'random') {
+          loopOrderDesc.innerHTML = '<strong>Acak Loop:</strong> Lagu diacak bebas di setiap putaran dengan proteksi anti-kembar berturut-turut.';
+        } else {
+          loopOrderDesc.innerHTML = '<strong>Berurutan:</strong> Lagu diulang sesuai urutan siklus teratur (1, 2, 3, 4, 1, 2, 3...).';
+        }
+      }
+      calculateCombinations();
+    });
+  });
+
   // Initial calculation on page load
   calculateCombinations();
 
@@ -976,12 +1154,20 @@ document.addEventListener('DOMContentLoaded', () => {
   startMergeBtn.addEventListener('click', async () => {
     if (isMerging) return;
 
+    const isMandatory = mandatoryToggle ? mandatoryToggle.checked : true;
+    const isLoop = loopToggle ? loopToggle.checked : false;
+
     const mandatoryFolder = mandatoryFolderInput.value.trim() || scannedData.mandatory_folder;
     const randomFolder = randomFolderInput.value.trim() || scannedData.random_folder;
     const outputFolder = outputFolderInput.value.trim();
 
-    if (!mandatoryFolder || !randomFolder) {
-      alert("Harap pilih atau masukkan folder/file Lagu Wajib dan Lagu Random terlebih dahulu.");
+    if (isMandatory && !mandatoryFolder) {
+      alert("Lagu Wajib sedang AKTIF. Harap pilih folder/file Lagu Wajib terlebih dahulu, atau matikan switch Lagu Wajib (toggle OFF) jika ingin merge tanpa lagu wajib.");
+      return;
+    }
+
+    if (!randomFolder) {
+      alert("Harap pilih atau masukkan folder/file Pool Lagu Random terlebih dahulu.");
       return;
     }
 
@@ -991,9 +1177,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const batchCount = parseInt(batchCountRange.value, 10);
     const crossfadeSec = parseFloat(crossfadeRange.value);
 
-    const nMandatory = scannedData.mandatory_count || 0;
-    if (mandatoryMode === 'all' && nMandatory > 0 && songsPerOutput < nMandatory) {
-      alert(`⚠️ Konfigurasi Tidak Valid:\n\nJumlah lagu per output (${songsPerOutput}) lebih sedikit dari jumlah lagu wajib (${nMandatory}).\n\nSaran Solusi:\n1. Pilih opsi "Ambil 1 Bergilir" (jika ingin 1 file output berisi ${songsPerOutput} lagu campuran),\n   ATAU\n2. Geser slider "Jumlah Lagu per Output" minimal ke ${nMandatory + 1} lagu (jika ingin semua ${nMandatory} lagu wajib masuk ke setiap file).`);
+    const loopTargetType = document.querySelector('input[name="loopTargetType"]:checked')?.value || 'count';
+    const loopDurationMin = loopTargetDurationNum ? parseFloat(loopTargetDurationNum.value) || 60 : 60;
+    const loopPoolCount = loopPoolCountRange ? parseInt(loopPoolCountRange.value, 10) : 0;
+    const loopOrder = document.querySelector('input[name="loopOrder"]:checked')?.value || 'random';
+    const summaryFormat = summaryFormatSelect ? summaryFormatSelect.value : 'both';
+
+    const nMandatory = isMandatory ? (scannedData.mandatory_count || 0) : 0;
+    if (isMandatory && mandatoryMode === 'all' && nMandatory > 0 && songsPerOutput < nMandatory) {
+      alert(`⚠️ Konfigurasi Tidak Valid:\n\nJumlah lagu per output (${songsPerOutput}) lebih sedikit dari jumlah lagu wajib (${nMandatory}).\n\nSaran Solusi:\n1. Pilih opsi "Ambil 1 Bergilir" (jika ingin 1 file output berisi ${songsPerOutput} lagu campuran),\n   ATAU\n2. Geser slider "Jumlah Lagu per Output" minimal ke ${nMandatory + 1} lagu.`);
       return;
     }
     
@@ -1012,6 +1204,13 @@ document.addEventListener('DOMContentLoaded', () => {
       batch_count: batchCount,
       position_mode: positionMode,
       mandatory_mode: mandatoryMode,
+      mandatory_enabled: isMandatory,
+      loop_enabled: isLoop,
+      loop_target_type: loopTargetType,
+      loop_target_duration_min: loopDurationMin,
+      loop_pool_count: loopPoolCount,
+      loop_order: loopOrder,
+      summary_format: summaryFormat,
       crossfade_sec: crossfadeSec,
       target_bitrate: targetBitrate,
       target_sample_rate: scannedData.detected_sample_rate || 44100
@@ -1143,23 +1342,33 @@ document.addEventListener('DOMContentLoaded', () => {
       const card = document.createElement('div');
       card.className = 'result-item-card';
 
+      const isMandatoryUsed = (f.playlist_details || []).some(t => t.is_mandatory);
       const mandatorySlots = (f.playlist_details || [])
         .map((t, i) => t.is_mandatory ? `#${i + 1}` : null)
         .filter(Boolean)
         .join(', ');
 
+      const badgeText = isMandatoryUsed ? `Slot Wajib di ${mandatorySlots}` : 'Semua Random (Non-Wajib)';
+      const badgeColor = isMandatoryUsed ? 'var(--accent-cyan)' : 'var(--accent-purple)';
+
       card.innerHTML = `
         <div class="result-file-info">
-          <div class="result-file-name">${f.filename}</div>
+          <div class="result-file-name" title="${f.filename}">${f.filename}</div>
           <div class="result-meta-row">
             <span class="result-dur">⏱️ ${f.duration_formatted}</span>
             <span class="result-bitrate">🎧 ${f.bitrate} kbps</span>
-            <span class="badge" style="color: var(--accent-cyan)">Slot Wajib di ${mandatorySlots || 'N/A'}</span>
+            <span class="badge" style="color: ${badgeColor}">${badgeText}</span>
           </div>
         </div>
         <div class="result-actions">
-          <button type="button" class="btn btn-secondary btn-sm play-track-btn" data-path="${encodeURIComponent(f.path)}" data-title="${f.filename}">
+          <button type="button" class="btn btn-secondary btn-sm play-track-btn" data-path="${encodeURIComponent(f.path)}" data-title="${f.filename}" title="Putar file audio ini">
             ▶️ Putar
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm btn-yt copy-yt-btn" title="Salin Timestamps YouTube ke Clipboard">
+            📋 Salin YT
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm btn-ts view-ts-btn" title="Lihat Timestamps & Ringkasan Lengkap">
+            👁️ Timestamps
           </button>
         </div>
       `;
@@ -1170,9 +1379,111 @@ document.addEventListener('DOMContentLoaded', () => {
         playAudio(path, title);
       });
 
+      card.querySelector('.copy-yt-btn').addEventListener('click', () => {
+        const ytText = f.youtube_timestamps || generateClientYtTimestamps(f.playlist_details);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(ytText).then(() => {
+            showToast(`✓ Timestamps YouTube untuk ${f.filename} disalin ke clipboard!`, 'success');
+          }).catch(() => {
+            openTimestampsModal(f);
+          });
+        } else {
+          openTimestampsModal(f);
+        }
+      });
+
+      card.querySelector('.view-ts-btn').addEventListener('click', () => {
+        openTimestampsModal(f);
+      });
+
       resultsList.appendChild(card);
     });
   }
+
+  function generateClientYtTimestamps(playlist) {
+    if (!playlist || playlist.length === 0) return '';
+    let currentSec = 0;
+    const lines = [];
+    playlist.forEach((track, idx) => {
+      const min = Math.floor(currentSec / 60);
+      const sec = Math.floor(currentSec % 60);
+      const ts = `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+      const title = (track.filename || `Track ${idx + 1}`).replace(/\.[^/.]+$/, "");
+      lines.push(`${ts} ${title}`);
+      currentSec += Number(track.duration) || 180;
+    });
+    return lines.join('\n');
+  }
+
+  function openTimestampsModal(fileData) {
+    if (!timestampsModal) return;
+    if (tsModalTitle) tsModalTitle.textContent = fileData.filename;
+    if (tsModalSubtitle) {
+      const songCount = fileData.playlist_details ? fileData.playlist_details.length : 0;
+      tsModalSubtitle.textContent = `Durasi: ${fileData.duration_formatted} | ${songCount} Lagu | Bitrate: ${fileData.bitrate} kbps`;
+    }
+    const ytText = fileData.youtube_timestamps || generateClientYtTimestamps(fileData.playlist_details);
+    if (tsYtTextarea) tsYtTextarea.value = ytText;
+    if (tsStdTextarea) tsStdTextarea.value = fileData.standard_timestamps || '';
+
+    switchTsTab('yt');
+    timestampsModal.classList.remove('hidden');
+  }
+
+  function closeTimestampsModal() {
+    if (timestampsModal) timestampsModal.classList.add('hidden');
+  }
+
+  function switchTsTab(tab) {
+    if (tab === 'yt') {
+      if (tabBtnTsYt) tabBtnTsYt.classList.add('active');
+      if (tabBtnTsStd) tabBtnTsStd.classList.remove('active');
+      if (paneTsYt) paneTsYt.classList.remove('hidden');
+      if (paneTsStd) paneTsStd.classList.add('hidden');
+    } else {
+      if (tabBtnTsStd) tabBtnTsStd.classList.add('active');
+      if (tabBtnTsYt) tabBtnTsYt.classList.remove('active');
+      if (paneTsStd) paneTsStd.classList.remove('hidden');
+      if (paneTsYt) paneTsYt.classList.add('hidden');
+    }
+  }
+
+  if (tabBtnTsYt) tabBtnTsYt.addEventListener('click', () => switchTsTab('yt'));
+  if (tabBtnTsStd) tabBtnTsStd.addEventListener('click', () => switchTsTab('std'));
+  if (btnCloseTsModal) btnCloseTsModal.addEventListener('click', closeTimestampsModal);
+  if (btnCloseTsModalBottom) btnCloseTsModalBottom.addEventListener('click', closeTimestampsModal);
+
+  if (btnCopyYtModal) {
+    btnCopyYtModal.addEventListener('click', () => {
+      if (tsYtTextarea && navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(tsYtTextarea.value).then(() => {
+          showToast('✓ Timestamps YouTube disalin ke clipboard!', 'success');
+        });
+      }
+    });
+  }
+
+  if (btnCopyStdModal) {
+    btnCopyStdModal.addEventListener('click', () => {
+      if (tsStdTextarea && navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(tsStdTextarea.value).then(() => {
+          showToast('✓ Format biasa disalin ke clipboard!', 'success');
+        });
+      }
+    });
+  }
+
+  if (timestampsModal) {
+    timestampsModal.addEventListener('click', (e) => {
+      if (e.target === timestampsModal) closeTimestampsModal();
+    });
+  }
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && timestampsModal && !timestampsModal.classList.contains('hidden')) {
+      closeTimestampsModal();
+    }
+  });
 
   function playAudio(filePath, title) {
     playerTrackTitle.textContent = title;

@@ -10,15 +10,15 @@
 
 <p align="center">
   <strong>Intelligent Audio Combinatorics & Batch Randomizer Engine</strong><br>
-  <em>Versi 2.2.0 — Ditenagai oleh Python, FFmpeg 8.1, Native Microsoft WebView2, dan Modern Dark Glassmorphism 3-Column Studio UI.</em>
+  <em>Versi 2.3.0 — Ditenagai oleh Python, FFmpeg 8.1, Native Microsoft WebView2, dan Modern Dark Glassmorphism 3-Column Studio UI.</em>
 </p>
 
 <p align="center">
-  <a href="https://github.com/maxnmrantau/Smart-MP3-Batch-Merger/releases/tag/v2.2.0"><img src="https://img.shields.io/badge/Download-v2.2.0%20Portable%20EXE-00f2fe?style=for-the-badge&logo=windows" alt="Download EXE"></a>
+  <a href="https://github.com/maxnmrantau/Smart-MP3-Batch-Merger/releases/tag/v2.3.0"><img src="https://img.shields.io/badge/Download-v2.3.0%20Portable%20EXE-00f2fe?style=for-the-badge&logo=windows" alt="Download EXE"></a>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.2.0-00f2fe.svg" alt="Version 2.2.0">
+  <img src="https://img.shields.io/badge/Version-2.3.0-00f2fe.svg" alt="Version 2.3.0">
   <img src="https://img.shields.io/badge/GUI-Native%20WebView2-10b981.svg" alt="Native WebView2">
   <img src="https://img.shields.io/badge/Layout-3--Column%20Zero--Scroll-a855f7.svg" alt="3-Column Studio Layout">
   <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License MIT">
@@ -120,8 +120,26 @@ $$\text{Variasi Unik} = P(n, k) = \frac{n!}{(n - k)!}$$
 
 ---
 
-## 🌟 Apa yang Baru di Versi 2.2.0? (New in v2.2.0)
+## 🌟 Apa yang Baru di Versi 2.3.0? (New in v2.3.0)
 
+1. **🔁 Fitur Putar Ulang (Loop) & Acak Loop (Random Shuffle)**:
+   * **Opsi Jumlah Lagu yang Di-loop:** Jika punya 10 lagu, Anda bebas memilih apakah ingin me-loop 5 lagu saja atau seluruh 10 lagu.
+   * **Target Durasi vs Target Jumlah:** Atur target pengulangan berdasarkan durasi total (misal 60 menit / 120 menit untuk video YouTube) atau jumlah lagu (misal 30 lagu).
+   * **Acak Loop Cerdas:** Lagu diulang dengan susunan acak alami dan proteksi *anti-consecutive duplicate* agar lagu yang sama tidak berbunyi dua kali berturut-turut. Tersedia juga opsi urutan sekuensial teratur.
+2. **🔘 Sakelar ON / OFF Lagu Wajib (Mandatory Toggle)**:
+   * Menggabungkan lagu kini dapat dilakukan murni dari pool acak tanpa harus mengisi folder Lagu Wajib.
+   * Cukup matikan switch toggle menjadi **OFF**, dan semua lagu dalam file output akan diacak dari koleksi pool lagu.
+3. **⏱️ Timestamps YouTube Otomatis & Format Biasa**:
+   * **YouTube Video Chapters Timestamps:** Menghitung waktu menit/detik yang presisi (`00:00 Judul Lagu`) dengan mengompensasi efek *crossfade*.
+   * **Tombol Cepat "📋 Salin YT":** Salin bab timestamps YouTube langsung ke clipboard hanya dengan sekali klik di setiap file hasil.
+   * **Modal Pratinjau Timestamps:** Tampilan interaktif dengan tab Format YouTube dan Format Biasa (nomor slot, file, durasi).
+   * **File Otomatis di Output:** Menghasilkan `youtube_timestamps.txt` (khusus deskripsi YouTube) dan `playlist_summary.txt` (laporan lengkap).
+
+---
+
+## 🌟 Riwayat Versi Sebelumnya (Previous Releases)
+
+### Versi 2.2.0:
 1. **🎛️ Tata Letak Pro Studio 3-Kolom Fullscreen (Zero-Scroll & No Empty Margins)**:
    * Tata letak dirombak menjadi 3 kolom terorganisir penuh (*Step 1: Input*, *Step 2: Settings & Duration*, *Step 3: Inspector, Run & Player*).
    * Mengisi penuh layar (`100vh`) tanpa ruang kosong dan tanpa scroll di resolusi desktop/laptop standar.
@@ -154,7 +172,7 @@ $$\text{Variasi Unik} = P(n, k) = \frac{n!}{(n - k)!}$$
 ## 🚀 Cara Menjalankan (Getting Started)
 
 ### 1. Menggunakan File Portable EXE (Siap Pakai - Disarankan):
-Unduh file **`Smart_MP3_Merger.exe`** dari halaman [GitHub Releases v2.2.0](https://github.com/maxnmrantau/Smart-MP3-Batch-Merger/releases/tag/v2.2.0) lalu klik ganda untuk menjalankannya. Tidak memerlukan instalasi Python apa pun.
+Unduh file **`Smart_MP3_Merger.exe`** dari halaman [GitHub Releases v2.3.0](https://github.com/maxnmrantau/Smart-MP3-Batch-Merger/releases/tag/v2.3.0) lalu klik ganda untuk menjalankannya. Tidak memerlukan instalasi Python apa pun.
 
 ### 2. Menjalankan dari Source Code (Python):
 ```bash

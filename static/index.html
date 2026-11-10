@@ -22,7 +22,7 @@
         <div>
           <div class="title-with-badge">
             <h1 class="app-title">Smart MP3 Batch Merger</h1>
-            <span class="app-version-badge">v2.2.0</span>
+            <span class="app-version-badge">v2.3.0</span>
           </div>
           <p class="app-subtitle">Audio Combinatorics & Intelligent Randomizer Engine</p>
         </div>
@@ -53,9 +53,14 @@
             <!-- Folder Lagu Wajib -->
             <div class="folder-item drop-zone" id="mandatoryDropZone">
               <div class="folder-label-row">
-                <label>
+                <div class="folder-title-with-toggle">
                   <span class="folder-tag tag-mandatory">🎵 1. Lagu Wajib (Mandatory)</span>
-                </label>
+                  <label class="switch-toggle" title="Aktifkan atau Nonaktifkan Penggunaan Lagu Wajib">
+                    <input type="checkbox" id="mandatoryToggle" checked>
+                    <span class="slider-round"></span>
+                  </label>
+                  <span class="toggle-state-text" id="mandatoryToggleText">ON</span>
+                </div>
                 <span class="badge" id="mandatoryCountBadge">0 Lagu Terdeteksi</span>
               </div>
 
@@ -163,7 +168,7 @@
 
           <div class="settings-grid">
             <!-- Posisi Lagu Wajib -->
-            <div class="setting-block">
+            <div class="setting-block" id="positionSettingBlock">
               <label class="setting-title">Posisi Lagu Wajib</label>
               <div class="pill-selector" id="positionSelector">
                 <label class="pill-option">
@@ -205,6 +210,86 @@
               </div>
             </div>
 
+            <!-- Fitur Loop & Acak Loop -->
+            <div class="setting-block loop-section-card" id="loopSettingBlock">
+              <div class="toggle-card-header">
+                <div class="toggle-info-col">
+                  <div class="toggle-title-row">
+                    <span class="setting-title" style="margin-bottom:0;">🔁 Fitur Loop &amp; Acak Loop</span>
+                    <span class="badge" id="loopBadge">Nonaktif</span>
+                  </div>
+                  <span class="toggle-desc-inline">Ulangi lagu &amp; acak susunan untuk durasi panjang / YouTube</span>
+                </div>
+                <div class="toggle-action-col">
+                  <label class="switch-toggle" title="Aktifkan atau Nonaktifkan Fitur Loop">
+                    <input type="checkbox" id="loopToggle">
+                    <span class="slider-round"></span>
+                  </label>
+                  <span class="toggle-state-text" id="loopToggleText">OFF</span>
+                </div>
+              </div>
+
+              <div class="loop-subpanel hidden" id="loopSubpanel">
+                <!-- Target Loop: Jumlah Lagu vs Target Durasi -->
+                <div class="sub-setting-group">
+                  <label class="sub-setting-label">Target Pengulangan (Loop By):</label>
+                  <div class="pill-selector pill-sm" id="loopTargetTypeSelector">
+                    <label class="pill-option">
+                      <input type="radio" name="loopTargetType" value="count" checked>
+                      <span class="pill-btn">Target Jumlah Lagu</span>
+                    </label>
+                    <label class="pill-option">
+                      <input type="radio" name="loopTargetType" value="duration">
+                      <span class="pill-btn">Target Durasi Waktu</span>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Input Durasi (Tampil saat pilih Target Durasi) -->
+                <div class="sub-setting-group hidden" id="loopDurationInputGroup">
+                  <div class="slider-header">
+                    <label for="loopTargetDurationNum">Target Durasi Minimal per File:</label>
+                    <div class="slider-val-box">
+                      <input type="number" id="loopTargetDurationNum" class="slider-val-input" min="5" max="600" value="60" step="5">
+                      <span class="slider-val-unit">Menit</span>
+                    </div>
+                  </div>
+                  <div class="slider-hint" id="loopDurationHint">Lagu di-loop hingga durasi mencapai minimal <strong>60 Menit (1 Jam)</strong>.</div>
+                </div>
+
+                <!-- Opsi Berapa Lagu yang di-loop dari pool -->
+                <div class="sub-setting-group" id="loopPoolCountGroup">
+                  <div class="slider-header">
+                    <label for="loopPoolCountRange">Jumlah Lagu yang Di-loop dari Pool:</label>
+                    <div class="slider-val-box">
+                      <input type="number" id="loopPoolCountNum" class="slider-val-input" min="1" max="100" value="10" title="Ketik jumlah lagu dari pool yang ingin di-loop">
+                      <span class="slider-val-unit">Lagu</span>
+                    </div>
+                  </div>
+                  <input type="range" id="loopPoolCountRange" min="1" max="100" value="10" step="1">
+                  <div class="slider-hint" id="loopPoolCountHint">Mengambil 10 lagu dari pool untuk diputar berulang.</div>
+                </div>
+
+                <!-- Urutan Loop: Acak Loop vs Berurutan -->
+                <div class="sub-setting-group">
+                  <label class="sub-setting-label">Urutan Pengulangan (Loop Order):</label>
+                  <div class="pill-selector pill-sm" id="loopOrderSelector">
+                    <label class="pill-option">
+                      <input type="radio" name="loopOrder" value="random" checked>
+                      <span class="pill-btn">🎲 Acak Loop (Shuffle)</span>
+                    </label>
+                    <label class="pill-option">
+                      <input type="radio" name="loopOrder" value="sequential">
+                      <span class="pill-btn">🔁 Berurutan (Siklus)</span>
+                    </label>
+                  </div>
+                  <div class="slider-hint" id="loopOrderDesc">
+                    <strong>Acak Loop:</strong> Lagu diacak bebas di setiap putaran dengan proteksi anti-kembar berturut-turut.
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Sliders: Songs Per Mix & Batch Count -->
             <div class="setting-block slider-block">
               <div class="slider-header">
@@ -217,19 +302,6 @@
               </div>
               <input type="range" id="songsPerOutputRange" min="2" max="100" value="5" step="1" />
               <div class="slider-hint" id="songsCompositionHint">Panjang 1 File MP3 = 1 Lagu Wajib + 4 Lagu Random</div>
-              
-              <!-- Smart Duration Info Card -->
-              <div class="duration-estimate-box" id="durationEstimateBox">
-                <div class="dur-est-main">
-                  <span class="dur-est-label">Estimasi Durasi per File:</span>
-                  <strong class="dur-est-val" id="durationEstVal">~15-20 Menit</strong>
-                </div>
-                <div class="dur-est-range" id="durationRangeVal">Rentang Acak: Menunggu scan lagu...</div>
-                <div class="dur-safety-badge safety-info" id="durationSafetyBadge">
-                  <span class="dur-status-icon" id="durationStatusIcon">ℹ️</span>
-                  <span class="dur-status-text" id="durationStatusText">Pilih folder lagu untuk melihat kalkulasi durasi riil &amp; rentang 1 jam.</span>
-                </div>
-              </div>
             </div>
 
             <div class="setting-block slider-block">
@@ -263,6 +335,17 @@
                 <option value="256">256 kbps (High Quality)</option>
                 <option value="192">192 kbps (Standard Quality)</option>
               </select>
+            </div>
+
+            <!-- Opsi Format Summary & Timestamps -->
+            <div class="setting-block">
+              <label class="setting-title">Format Laporan Timestamps &amp; Summary</label>
+              <select id="summaryFormatSelect" class="custom-select">
+                <option value="both" selected>Lengkap (Format YouTube + Format Biasa)</option>
+                <option value="youtube">Khusus Timestamps YouTube (00:00 Judul Lagu)</option>
+                <option value="standard">Khusus Format Biasa (Slot, Detail Durasi)</option>
+              </select>
+              <div class="slider-hint">Menyimpan file <code>playlist_summary.txt</code> &amp; <code>youtube_timestamps.txt</code> di folder output.</div>
             </div>
           </div>
         </section>
@@ -507,6 +590,43 @@
 
             <div class="mode-card">
               <div class="mode-card-header">
+                <span class="mode-icon">🔘</span>
+                <h4>Sakelar ON / OFF Lagu Wajib</h4>
+              </div>
+              <p>Fleksibilitas penuh jika ingin merge tanpa lagu intro/identitas:</p>
+              <ul>
+                <li><strong>ON:</strong> Lagu wajib dipastikan masuk ke setiap file gabungan.</li>
+                <li><strong>OFF:</strong> Seluruh susunan lagu diambil 100% dari pool lagu random tanpa memerlukan lagu wajib.</li>
+              </ul>
+            </div>
+
+            <div class="mode-card">
+              <div class="mode-card-header">
+                <span class="mode-icon">🔁</span>
+                <h4>Fitur Loop &amp; Acak Loop</h4>
+              </div>
+              <p>Memungkinkan pengulangan lagu untuk mencapai target lagu atau durasi tertentu:</p>
+              <ul>
+                <li><strong>Pilih Berapa Lagu:</strong> Misal punya 10 lagu, Anda bebas memilih ingin me-loop 5 lagu saja atau seluruh 10 lagu.</li>
+                <li><strong>Acak Loop vs Berurutan:</strong> Lagu dapat diulang teratur (siklus) atau diacak bebas (shuffle alami) tanpa ada lagu kembar yang berdampingan berturut-turut.</li>
+                <li><strong>Target Durasi vs Jumlah:</strong> Tentukan target durasi (cth: 60 menit) atau target jumlah lagu (cth: 30 lagu).</li>
+              </ul>
+            </div>
+
+            <div class="mode-card">
+              <div class="mode-card-header">
+                <span class="mode-icon">⏱️</span>
+                <h4>Timestamps YouTube &amp; Summary Biasa</h4>
+              </div>
+              <p>Memudahkan kreator video konten mengunggah ke YouTube:</p>
+              <ul>
+                <li><strong>Format YouTube:</strong> Format standar <code>00:00 Judul Lagu</code> yang otomatis dibaca YouTube menjadi Video Chapters. Tersedia tombol sekali klik <strong>"Salin YT"</strong> di setiap file hasil.</li>
+                <li><strong>File Otomatis:</strong> Menghasilkan <code>playlist_summary.txt</code> (laporan lengkap) dan <code>youtube_timestamps.txt</code> langsung di folder output.</li>
+              </ul>
+            </div>
+
+            <div class="mode-card">
+              <div class="mode-card-header">
                 <span class="mode-icon">🧮</span>
                 <h4>Live Combinatorics & Anti-Duplikasi</h4>
               </div>
@@ -545,6 +665,49 @@
 
       <div class="modal-footer">
         <button type="button" class="btn btn-primary" id="btnUnderstandGuide">Saya Mengerti</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Timestamps & Summary Viewer -->
+  <div class="modal-overlay hidden" id="timestampsModal">
+    <div class="modal-card timestamps-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon-badge">⏱️</div>
+          <div>
+            <h2 class="modal-title" id="tsModalTitle">Timestamps &amp; Summary</h2>
+            <p class="modal-subtitle" id="tsModalSubtitle">Daftar urutan lagu dan timestamps siap copy untuk YouTube</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" id="btnCloseTsModal" title="Tutup (ESC)">&times;</button>
+      </div>
+
+      <div class="modal-tabs">
+        <button type="button" class="tab-btn active" id="tabBtnTsYt">🔴 Format YouTube (Siap Paste)</button>
+        <button type="button" class="tab-btn" id="tabBtnTsStd">📄 Format Biasa (Detail Slot)</button>
+      </div>
+
+      <div class="modal-body" style="padding: 16px 24px;">
+        <div class="ts-tab-pane" id="paneTsYt">
+          <div class="ts-copy-bar">
+            <span class="ts-info-text">Format ini sesuai standar video chapters deskripsi YouTube (otomatis membuat bab di video YouTube).</span>
+            <button type="button" class="btn btn-secondary btn-sm" id="btnCopyYtModal">📋 Salin Timestamps YouTube</button>
+          </div>
+          <textarea id="tsYtTextarea" class="ts-textarea" readonly rows="12" placeholder="Timestamps YouTube akan muncul di sini..."></textarea>
+        </div>
+
+        <div class="ts-tab-pane hidden" id="paneTsStd">
+          <div class="ts-copy-bar">
+            <span class="ts-info-text">Format detail mencantumkan nomor slot, role lagu (wajib/random), durasi masing-masing, dan nama file.</span>
+            <button type="button" class="btn btn-secondary btn-sm" id="btnCopyStdModal">📋 Salin Format Biasa</button>
+          </div>
+          <textarea id="tsStdTextarea" class="ts-textarea" readonly rows="12" placeholder="Format detail biasa akan muncul di sini..."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btnCloseTsModalBottom">Tutup</button>
       </div>
     </div>
   </div>
